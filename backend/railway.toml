@@ -1,0 +1,8 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "npx prisma db push && node prisma/seed.js && npm start"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

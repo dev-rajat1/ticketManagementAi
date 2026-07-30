@@ -1,0 +1,115 @@
+// SmartSupport - Prisma Schema for PostgreSQL
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                    String   @id @default(uuid())
+  email                 String   @unique
+  passwordHash          String   @map("password_hash")
+  name                  String
+  role                  String   @default("USER") // ADMIN, AGENT, USER
+  avatarUrl             String?  @map("avatar_url")
+  address               String?
+  phoneNumber           String?  @map("phone_number")
+  internalNotes         String?  @map("internal_notes")
+  isActive              Boolean  @default(true) @map("is_active")
+  
+  resetPasswordToken    String?  @map("reset_password_token")
+  resetPasswordExpires  DateTime? @map("reset_password_expires")
+
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  createdTickets  Ticket[]        @relation("TicketCreator")
+  assignedTickets Ticket[]        @relation("TicketAssignee")
+  comments        Comment[]
+  attachments     Attachment[]
+  ticketChanges   TicketHistory[]
+  refreshTokens   RefreshToken[]
+
+  @@map("users")
+}
+
+model Ticket {
+  id              String   @id @default(uuid())
+  ticketNumber    String   @unique @map("ticket_number")
+  subject         String
+  description     String
+  status          String   @default("OPEN")
+  priority        String   @default("MEDIUM")
+  category        String?
+  dueDate         DateTime? @map("due_date")
+  
+  aiSentiment     String?   @map("ai_sentiment")
+  aiSummary       String?   @map("ai_summary")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  createdById  String       @map("created_by")
+  createdBy    User         @relation("TicketCreator", fields: [createdById], references: [id])
+  assignedToId String?      @map("assigned_to")
+  assignedTo   User?        @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  comments     Comment[]
+  attachments  Attachment[]
+  history      TicketHistory[]
+
+  @@map("tickets")
+}
+
+model Comment {
+  id            String   @id @default(uuid())
+  content       String
+  isAiGenerated Boolean  @default(false) @map("is_ai_generated")
+  createdAt     DateTime @default(now()) @map("created_at")
+  ticketId String @map("ticket_id")
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId   String @map("user_id")
+  user     User   @relation(fields: [userId], references: [id])
+  @@map("comments")
+}
+
+model Attachment {
+  id        String   @id @default(uuid())
+  filename  String
+  fileUrl   String   @map("file_url")
+  mimeType  String   @map("mime_type")
+  fileSize  Int      @map("file_size")
+  createdAt DateTime @default(now()) @map("created_at")
+  ticketId   String @map("ticket_id")
+  ticket     Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploadedBy String @map("uploaded_by")
+  user       User   @relation(fields: [uploadedBy], references: [id])
+  @@map("attachments")
+}
+
+model TicketHistory {
+  id           String   @id @default(uuid())
+  fieldChanged String   @map("field_changed")
+  oldValue     String?  @map("old_value")
+  newValue     String?  @map("new_value")
+  createdAt    DateTime @default(now()) @map("created_at")
+  ticketId  String @map("ticket_id")
+  ticket    Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  changedBy String @map("changed_by")
+  user      User   @relation(fields: [changedBy], references: [id])
+  @@map("ticket_history")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("refresh_tokens")
+}
