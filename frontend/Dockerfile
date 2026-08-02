@@ -7,12 +7,5 @@ COPY . /usr/share/nginx/html
 # Nginx config copy karo
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Entrypoint script copy karo
-COPY docker-entrypoint.sh /
-RUN chmod +x /docker-entrypoint.sh
-
-# Railway port
-EXPOSE 80
-
-# Script ke through start karo
-CMD ["/docker-entrypoint.sh"]
+# Script inline taaki Windows line-ending (CRLF) ka koi issue na ho
+CMD /bin/sh -c "echo \"window.ENV_BACKEND_URL = '${BACKEND_URL:-http://localhost:5000}';\" > /usr/share/nginx/html/env-config.js && nginx -g 'daemon off;'"
