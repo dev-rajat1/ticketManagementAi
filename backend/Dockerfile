@@ -36,5 +36,5 @@ USER node
 # 11. Expose port 5000
 EXPOSE 5000
 
-# 12. Run Prisma push, Seed the database, then start the server
-CMD ["sh", "-c", "npx prisma db push && node prisma/seed.js && npm start"]
+# 12. Run Prisma push then start the server (seed hataya — DB pehle se ready hai)
+CMD ["sh", "-c", "npx prisma db push && npm start"]
