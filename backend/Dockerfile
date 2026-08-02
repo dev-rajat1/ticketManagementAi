@@ -1,5 +1,8 @@
-# 1. Node.js 18 Alpine base image
-FROM node:22-alpine
+# Node.js 24 — npm@12 ke saath fully compatible
+FROM node:24-alpine
+
+# npm update notice disable karo
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 
 # 2. Install dependencies for Prisma and native modules like bcrypt
 RUN apk add --no-cache \
