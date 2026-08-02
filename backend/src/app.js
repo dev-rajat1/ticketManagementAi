@@ -52,14 +52,7 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman, curl)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    callback(new Error('CORS: Origin not allowed — ' + origin));
-  },
+  origin: true, // Allow all origins for now to prevent Railway blocking
   credentials: true,
 }));
 app.use(morgan('dev'));
