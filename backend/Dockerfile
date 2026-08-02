@@ -15,7 +15,10 @@ WORKDIR /app
 # 4. Copy package files
 COPY package*.json ./
 
-# 5. Install all dependencies
+# 5. Update npm to latest version
+RUN npm install -g npm@latest
+
+# 6. Install all dependencies
 RUN npm install
 
 # 6. Copy Prisma directory first to generate client
@@ -36,5 +39,5 @@ USER node
 # 11. Expose port 5000
 EXPOSE 5000
 
-# 12. Run Prisma push then start the server (seed hataya — DB pehle se ready hai)
-CMD ["sh", "-c", "npx prisma db push && npm start"]
+# 12. Run Prisma push then start the server directly with node
+CMD ["sh", "-c", "npx prisma db push && node src/app.js"]
