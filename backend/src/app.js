@@ -70,11 +70,6 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 // Uploads serve karna (attachments ke liye)
 app.use('/uploads', express.static(path.resolve(__dirname, '..', 'uploads')));
 
-// Health Check — Railway is route se check karta hai app online hai ya nahi
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
