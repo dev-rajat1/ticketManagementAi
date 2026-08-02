@@ -1,6 +1,5 @@
-// Backend URL — Railway pe BACKEND_URL env variable inject hogi
-// Local development ke liye fallback: http://localhost:5000
-const API_URL = (window.ENV_BACKEND_URL || 'http://localhost:5000') + '/api';
+// Railway Backend URL directly hardcoded to prevent injection issues
+const API_URL = 'https://remarkable-gentleness-production-525d.up.railway.app/api';
 
 // Global State
 window.currentUser = null;
