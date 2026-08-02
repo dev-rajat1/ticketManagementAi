@@ -1,5 +1,5 @@
 # 1. Node.js 18 Alpine base image
-FROM node:18-alpine
+FROM node:22-alpine
 
 # 2. Install dependencies for Prisma and native modules like bcrypt
 RUN apk add --no-cache \
@@ -15,10 +15,7 @@ WORKDIR /app
 # 4. Copy package files
 COPY package*.json ./
 
-# 5. Update npm to latest version
-RUN npm install -g npm@latest
-
-# 6. Install all dependencies
+# 5. Install all dependencies
 RUN npm install
 
 # 6. Copy Prisma directory first to generate client
