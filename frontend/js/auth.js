@@ -12,6 +12,19 @@ window.handleLogin = async function(event) {
     if(event) event.preventDefault();
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
+    const errorDiv = document.getElementById('login-error');
+    const btn = document.getElementById('btn-login');
+    const btnText = document.getElementById('btn-login-text');
+    const btnIcon = document.getElementById('btn-login-icon');
+    const btnSpinner = document.getElementById('btn-login-spinner');
+    
+    // Reset state
+    errorDiv.style.display = 'none';
+    errorDiv.innerText = '';
+    btn.disabled = true;
+    btnText.innerText = 'Signing In...';
+    btnIcon.style.display = 'none';
+    btnSpinner.style.display = 'inline-block';
     
     try {
         const res = await window.apiFetch('/auth/login', {
@@ -25,10 +38,22 @@ window.handleLogin = async function(event) {
             await window.initApp();
             window.showToast('Welcome Back!');
         } else {
-            window.showToast(d.message || 'Login failed', 'error');
+            errorDiv.innerText = d.message || 'Incorrect email or password. Please try again.';
+            errorDiv.style.display = 'block';
+            // Restore button state
+            btn.disabled = false;
+            btnText.innerText = 'Sign In';
+            btnIcon.style.display = 'inline-block';
+            btnSpinner.style.display = 'none';
         }
     } catch (err) {
-        window.showToast('Server error', 'error');
+        errorDiv.innerText = 'Unable to connect to the server. Please try again later.';
+        errorDiv.style.display = 'block';
+        // Restore button state
+        btn.disabled = false;
+        btnText.innerText = 'Sign In';
+        btnIcon.style.display = 'inline-block';
+        btnSpinner.style.display = 'none';
     }
 };
 

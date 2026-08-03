@@ -141,29 +141,64 @@
     color: var(--success);
 }
 
+.login-error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    padding: 12px 15px;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.btn-auth:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
 /* Responsive Fixes */
 @media (max-width: 480px) {
     .auth-wrapper {
         padding: 1rem;
-        align-items: flex-start;
-        padding-top: 4rem;
+        align-items: center; /* Center on mobile instead of top */
+        padding-top: 2rem;
     }
     
     .auth-card {
         padding: 2.5rem 1.5rem;
-        border-radius: 30px;
-        box-shadow: none;
+        border-radius: 25px;
+        box-shadow: var(--nm-flat); /* Keep a subtle shadow on mobile */
+        width: 100%;
+        max-width: 100%;
     }
     
+    .logo-circle {
+        width: 60px;
+        height: 60px;
+    }
+
+    .logo-circle i {
+        font-size: 1.8rem;
+    }
+
+    .auth-header {
+        margin-bottom: 2rem;
+    }
+
     .auth-header h1 {
-        font-size: 1.6rem;
+        font-size: 1.5rem;
     }
 
     .input-group {
-        padding: 12px 18px;
+        padding: 14px 18px;
     }
 
     .btn-auth {
-        padding: 15px;
+        padding: 16px;
+        font-size: 1rem;
     }
 }
