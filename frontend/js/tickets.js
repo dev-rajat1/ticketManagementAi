@@ -172,7 +172,7 @@ window.openDetailModal = async function(id) {
             document.getElementById('d-ai-summary').innerText = t.aiSummary;
             document.getElementById('btn-ai-summary-text').innerText = 'Regenerate Analysis';
         } else {
-            document.getElementById('d-ai-summary').innerText = 'No summary generated yet. Click below to analyze.';
+            document.getElementById('d-ai-summary').innerText = 'Click "Generate Analysis" to create an AI-powered summary and extract sentiment.';
             document.getElementById('btn-ai-summary-text').innerText = 'Generate Analysis';
         }
         
