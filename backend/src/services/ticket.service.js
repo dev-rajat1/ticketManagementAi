@@ -124,10 +124,7 @@ class TicketService {
     emailService.sendTicketUpdate(ticket.createdBy, ticket, 'Ticket Created Successfully')
       .catch(err => console.error('Notification Email failed:', err.message));
 
-    // AI is now ONLY used for Summary
-    aiService.summarize(ticket.id).catch(err => 
-      console.error('AI Summarization Error:', err.message)
-    );
+    // AI summary is now triggered manually by the user, so we don't call it here automatically.
 
     return ticket;
   }

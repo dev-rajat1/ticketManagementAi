@@ -167,10 +167,14 @@ window.openDetailModal = async function(id) {
         document.getElementById('d-creator').innerText = t.createdBy?.name || 'Email User';
 
         const aiSummaryBox = document.getElementById('ai-summary-box');
+        aiSummaryBox.style.display = 'block';
         if (t.aiSummary) {
-            aiSummaryBox.style.display = 'block';
             document.getElementById('d-ai-summary').innerText = t.aiSummary;
-        } else aiSummaryBox.style.display = 'none';
+            document.getElementById('btn-ai-summary-text').innerText = 'Regenerate Analysis';
+        } else {
+            document.getElementById('d-ai-summary').innerText = 'No summary generated yet. Click below to analyze.';
+            document.getElementById('btn-ai-summary-text').innerText = 'Generate Analysis';
+        }
         
         document.getElementById('d-ai-sentiment').innerText = t.aiSentiment || 'Analyzing...';
         
@@ -276,16 +280,34 @@ window.useAiReply = function() {
 };
 
 window.regenerateAiSummary = async function() {
+    const btnText = document.getElementById('btn-ai-summary-text');
+    const btnIcon = document.getElementById('btn-ai-summary-icon');
+    const btnSpinner = document.getElementById('btn-ai-summary-spinner');
+    const btn = document.getElementById('btn-ai-summary');
+
+    btn.disabled = true;
+    btnText.innerText = 'Analyzing...';
+    btnIcon.style.display = 'none';
+    btnSpinner.style.display = 'inline-block';
+
     try {
         const res = await window.apiFetch(`/tickets/${window.currentTicketId}/ai-summary`);
         const d = await res.json();
         if (d.success) {
-            document.getElementById('ai-summary-box').style.display = 'block';
             document.getElementById('d-ai-summary').innerText = d.data.summary;
-            window.showToast('AI Summary updated');
+            window.showToast('AI Summary generated successfully');
+            btnText.innerText = 'Regenerate Analysis';
+        } else {
+            window.showToast('AI failed: ' + (d.message || ''), 'error');
+            btnText.innerText = 'Generate Analysis';
         }
     } catch (e) {
-        window.showToast('AI failed', 'error');
+        window.showToast('Network error while analyzing', 'error');
+        btnText.innerText = 'Generate Analysis';
+    } finally {
+        btn.disabled = false;
+        btnIcon.style.display = 'inline-block';
+        btnSpinner.style.display = 'none';
     }
 };
 

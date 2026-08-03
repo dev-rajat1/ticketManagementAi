@@ -368,7 +368,11 @@
                     <div id="ai-summary-box" class="card-nm" style="display:none; background: rgba(79, 70, 229, 0.05); border: 1px solid rgba(79, 70, 229, 0.1); margin-bottom: 2rem;">
                         <h4 class="section-title"><i class="fas fa-robot"></i> AI Insight</h4>
                         <p id="d-ai-summary" style="margin: 1rem 0; font-style: italic;"></p>
-                        <button onclick="window.regenerateAiSummary()" class="btn btn-primary-small">Regenerate Analysis</button>
+                        <button id="btn-ai-summary" onclick="window.regenerateAiSummary()" class="btn btn-primary-small">
+                            <span id="btn-ai-summary-text">Generate Analysis</span>
+                            <i id="btn-ai-summary-icon" class="fas fa-magic" style="margin-left: 5px;"></i>
+                            <i id="btn-ai-summary-spinner" class="fas fa-circle-notch fa-spin" style="margin-left: 5px; display:none;"></i>
+                        </button>
                     </div>
 
                     <div class="detail-tabs">
