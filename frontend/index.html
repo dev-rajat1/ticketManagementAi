@@ -16,7 +16,16 @@
     <link rel="stylesheet" href="css/tables.css">
     <link rel="stylesheet" href="css/modals.css">
 
-
+    <!-- Anti-Flicker Script -->
+    <script>
+        if (localStorage.getItem('token')) {
+            document.documentElement.classList.add('is-logged-in');
+        }
+    </script>
+    <style>
+        html.is-logged-in #auth-page { display: none !important; }
+        html.is-logged-in #dashboard-page { display: flex !important; }
+    </style>
 </head>
 <body>
     <div id="toast-container"></div>
