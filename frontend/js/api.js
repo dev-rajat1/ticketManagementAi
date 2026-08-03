@@ -23,6 +23,7 @@ window.apiFetch = async function(endpoint, options = {}) {
     }
 
     const response = await fetch(`${API_URL}${endpoint}`, {
+        cache: 'no-cache',
         ...options,
         headers
     });
