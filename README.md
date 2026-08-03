@@ -6,7 +6,7 @@ SmartSupport is a modern, full-stack IT Support and Helpdesk ticketing system po
 
 ## ✨ Key Features
 
-- 🤖 **AI Integration (Gemini 2.0)**: Automatically analyzes ticket descriptions to determine customer sentiment and generates concise summaries for support agents.
+- 🤖 **AI Integration (Gemini)**: Automatically analyzes ticket descriptions to determine customer sentiment and generates concise summaries for support agents.
 - 📧 **Email-to-Ticket Automation**: Listens to a dedicated IMAP email inbox and automatically creates tickets when users send support emails.
 - 🔐 **Role-Based Access Control (RBAC)**: Secure authentication with Admin, Agent, and User roles.
 - 📊 **Agent Dashboard**: Real-time stats, ticket assignments, and performance monitoring.
