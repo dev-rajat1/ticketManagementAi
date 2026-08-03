@@ -120,8 +120,13 @@ ticketai/backend/
 - **Secrets:** `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `GEMINI_API_KEY`.
 - **Email config:** `SMTP_USER`, `SMTP_PASS`, `IMAP_USER`, `IMAP_PASS`.
 
-### Docker Execution
-The backend is fully containerized. To build and start the application:
+### ☁️ Railway Deployment
+Both backend and frontend are decoupled and deployed on Railway:
+- **Backend:** Node.js Docker container (using `backend/Dockerfile`). Exposes port 5000, connects to Supabase PostgreSQL, and uses `gemini-2.0-flash`.
+- **Frontend:** Nginx Static Server (using `frontend/Dockerfile`). The backend API URL is currently hardcoded in `js/api.js` to ensure stable connectivity without environment variable injection issues.
+
+### 🐳 Docker Execution (Local)
+The backend is fully containerized. To build and start the application locally:
 ```bash
 docker compose up --build -d
 ```
