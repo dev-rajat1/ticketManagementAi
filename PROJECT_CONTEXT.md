@@ -122,7 +122,7 @@ ticketai/backend/
 
 ### ☁️ Railway Deployment
 Both backend and frontend are decoupled and deployed on Railway:
-- **Backend:** Node.js Docker container (using `backend/Dockerfile`). Exposes port 5000, connects to Supabase PostgreSQL, and uses `gemini-3.6-flash`.
+- **Backend:** Node.js Docker container (using `backend/Dockerfile`). Exposes port 5000, connects to Supabase PostgreSQL, and uses `gemini-3.5-flash`.
 - **Frontend:** Nginx Static Server (using `frontend/Dockerfile`). The backend API URL is currently hardcoded in `js/api.js` to ensure stable connectivity without environment variable injection issues.
 
 ### 🐳 Docker Execution (Local)
