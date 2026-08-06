@@ -5,8 +5,8 @@ import 'dotenv/config';
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = process.env.INITIAL_ADMIN_EMAIL || 'admin@smartsupport.com';
-  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'admin123';
+  const adminEmail = process.env.INITIAL_ADMIN_EMAIL || 'ADMIN_EMAIL';
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'ADMIN_PASS';
   const adminHash = await bcrypt.hash(adminPassword, 12);
 
   console.log(`🚀 Seeding database... Target Admin: ${adminEmail}`);
