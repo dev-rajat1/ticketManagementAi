@@ -186,6 +186,82 @@ Sentiment:`;
       console.error("❌ Process Ticket Background Error:", e);
     }
   }
+
+  /**
+   * Transcribes and analyzes call recording audio to generate ticket details
+   */
+  async generateTicketFromAudio(fileBuffer, mimeType, filename = 'recording.mp3') {
+    try {
+      if (!process.env.GEMINI_API_KEY) {
+        console.warn("⚠️ AI Warning: GEMINI_API_KEY is missing. Using fallback for audio ticket.");
+        return this.#fallbackAudioTicket(filename);
+      }
+
+      // Valid audio mimeTypes for Gemini: audio/mp3, audio/wav, audio/mpeg, audio/ogg, audio/m4a, etc.
+      let validMime = mimeType;
+      if (mimeType === 'audio/mp3') validMime = 'audio/mpeg';
+
+      const prompt = `You are an expert customer support AI listening to a recorded customer call.
+Analyze the audio thoroughly, transcribe the dialogue accurately, and return ONLY a valid JSON object matching this schema:
+{
+  "subject": "A concise 5 to 8 word descriptive title of the customer issue",
+  "description": "Comprehensive explanation of what the customer called about, issues experienced, and any requested action",
+  "transcript": "Accurate dialogue transcript formatted as [Customer]: ... [Agent]: ...",
+  "priority": "LOW" or "MEDIUM" or "HIGH" or "CRITICAL",
+  "category": "Technical Support" or "Billing & Payments" or "Account & Access" or "Feature Request" or "Bug Report" or "General Inquiry",
+  "sentiment": "positive" or "neutral" or "frustrated" or "angry"
+}
+
+Respond ONLY with raw JSON. Do not include markdown code block backticks.`;
+
+      const audioPart = {
+        inlineData: {
+          data: fileBuffer.toString('base64'),
+          mimeType: validMime,
+        },
+      };
+
+      const result = await aiModel.generateContent([
+        audioPart,
+        { text: prompt }
+      ]);
+
+      const response = await result.response;
+      let text = response.text();
+      if (!text) throw new Error("Empty response from AI for audio recording");
+
+      // Strip code fences if present
+      text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+      const parsed = JSON.parse(text);
+      return {
+        subject: parsed.subject || `Call Recording Ticket (${filename})`,
+        description: parsed.description || 'Call recording analyzed by SmartSupport AI.',
+        transcript: parsed.transcript || 'Audio call processed successfully.',
+        priority: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(parsed.priority?.toUpperCase())
+          ? parsed.priority.toUpperCase()
+          : 'MEDIUM',
+        category: parsed.category || 'General Inquiry',
+        sentiment: parsed.sentiment?.toLowerCase() || 'neutral'
+      };
+    } catch (err) {
+      console.error("❌ Gemini Audio Processing Error:", err.message);
+      return this.#fallbackAudioTicket(filename);
+    }
+  }
+
+  #fallbackAudioTicket(filename) {
+    const cleanName = filename.replace(/[-_]/g, ' ').replace(/\.[^/.]+$/, '');
+    return {
+      subject: `Call Recording Ticket - ${cleanName}`,
+      description: `Support ticket automatically generated from customer call recording "${filename}". The audio file has been saved to attachments for playback.`,
+      transcript: `[Auto-Processed]\nCall Recording: ${filename}\nThe audio has been recorded and safely stored. Support agents can listen to the full call using the embedded audio player below.`,
+      priority: 'MEDIUM',
+      category: 'General Inquiry',
+      sentiment: 'neutral'
+    };
+  }
 }
 
 export default new AIService();
+

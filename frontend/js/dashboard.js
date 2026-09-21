@@ -255,5 +255,10 @@ window.renderProfileUI = function() {
     const roleBadge = document.getElementById('user-role-badge');
     if (roleBadge) roleBadge.innerText = window.currentUser.role;
 
-    document.getElementById('btn-create-ticket-main').style.display = isAdmin ? 'inline-flex' : 'none';
+    const createBtn = document.getElementById('btn-create-ticket-main');
+    if (createBtn) createBtn.style.display = 'inline-flex';
+
+    const audioBtn = document.getElementById('btn-audio-ticket-main');
+    if (audioBtn) audioBtn.style.display = 'inline-flex';
 };
+

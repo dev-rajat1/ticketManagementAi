@@ -247,3 +247,20 @@ export const getAiSuggestions = async (req, res, next) => {
     next(error);
   }
 };
+
+export const createFromAudio = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please upload an audio file (.mp3, .wav, .m4a, .ogg, .webm)'
+      });
+    }
+
+    const ticket = await ticketService.createFromAudio(req.file, req.user.id);
+    return successResponse(res, 'Ticket created from audio recording successfully', ticket, 201);
+  } catch (error) {
+    next(error);
+  }
+};
+

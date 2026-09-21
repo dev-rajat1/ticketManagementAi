@@ -144,6 +144,9 @@
                             <button id="btn-create-ticket-main" class="btn btn-primary" style="display: none;" onclick="window.openCreateTicketModal()">
                                 <i class="fas fa-plus"></i> New Ticket
                             </button>
+                            <button id="btn-audio-ticket-main" class="btn btn-secondary-outline" style="display: none;" onclick="window.openAudioTicketModal()" title="Upload Call Recording to generate AI ticket">
+                                <i class="fas fa-microphone"></i> Audio to Ticket
+                            </button>
                             <button class="btn btn-refresh-icon" title="Refresh" onclick="window.loadTickets(1); window.updateDashboardStatsSummary();">
                                 <i class="fas fa-sync-alt"></i> Sync
                             </button>
@@ -384,6 +387,16 @@
                         </button>
                     </div>
 
+                    <div id="call-recording-box" class="call-recording-card" style="display:none; margin-bottom: 2rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                            <strong style="color: var(--primary); display: flex; align-items: center; gap: 8px; font-size: 0.95rem;">
+                                <i class="fas fa-headset"></i> Call Recording Playback
+                            </strong>
+                            <span id="call-recording-badge" class="badge" style="background: rgba(99, 102, 241, 0.15); color: var(--primary);">Recorded Call</span>
+                        </div>
+                        <audio id="call-recording-player" controls style="width: 100%; height: 38px; border-radius: 8px; outline: none;"></audio>
+                    </div>
+
                     <div class="detail-tabs">
                         <button class="detail-tab-btn active" id="tab-btn-comments" onclick="window.switchDetailTab('comments')">Timeline</button>
                         <button class="detail-tab-btn" id="tab-btn-attachments" onclick="window.switchDetailTab('attachments')">Attachments</button>
@@ -520,7 +533,72 @@
         </div>
     </div>
 
+    <!-- Audio Call Recording to Ticket Modal -->
+    <div id="audio-ticket-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 540px;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="background: rgba(99, 102, 241, 0.15); color: var(--primary); width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                        <i class="fas fa-headset"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800;">Audio to AI Ticket</h3>
+                        <small style="color: var(--text-secondary);">Upload call recording to transcribe & auto-create ticket</small>
+                    </div>
+                </div>
+                <button type="button" class="btn" style="background: transparent; box-shadow: none; font-size: 1.5rem; color: var(--text-secondary); padding: 0 5px;" onclick="window.closeAudioTicketModal()">&times;</button>
+            </div>
+
+            <form id="audio-ticket-form">
+                <!-- Dropzone for audio file -->
+                <div id="audio-dropzone" class="audio-dropzone" onclick="document.getElementById('audio-file-input').click()">
+                    <input type="file" id="audio-file-input" accept="audio/*,.mp3,.wav,.m4a,.ogg,.webm" style="display: none;" onchange="window.handleAudioFileSelect(event)">
+                    <div class="dropzone-icon">
+                        <i class="fas fa-cloud-upload-alt fa-2x" style="color: var(--primary);"></i>
+                    </div>
+                    <p style="margin: 8px 0 4px; font-weight: 700; color: var(--text-main);">Click to select or drag call recording</p>
+                    <small style="color: var(--text-secondary);">Supported: MP3, WAV, M4A, OGG, WebM (Max 25MB)</small>
+                </div>
+
+                <!-- Selected Audio File Preview Card -->
+                <div id="audio-file-card" style="display: none; margin-top: 15px; padding: 14px; border-radius: 12px; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2);">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
+                            <i class="fas fa-file-audio fa-2x" style="color: var(--primary); flex-shrink: 0;"></i>
+                            <div style="overflow: hidden;">
+                                <div id="audio-selected-filename" style="font-weight: 700; font-size: 0.95rem; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;">recording.mp3</div>
+                                <small id="audio-selected-filesize" style="color: var(--text-secondary);">0 MB</small>
+                            </div>
+                        </div>
+                        <button type="button" class="btn" style="background: transparent; box-shadow: none; color: var(--danger); font-size: 1.3rem; padding: 0 8px;" onclick="window.clearAudioSelection()" title="Remove file">&times;</button>
+                    </div>
+                    <!-- Audio playback preview -->
+                    <audio id="audio-preview-element" controls style="width: 100%; margin-top: 12px; height: 38px; border-radius: 8px; outline: none;"></audio>
+                </div>
+
+                <!-- Processing Animation -->
+                <div id="audio-processing-state" style="display: none; margin-top: 20px; text-align: center; padding: 25px 15px; background: rgba(99, 102, 241, 0.06); border-radius: 16px; border: 1px dashed var(--primary);">
+                    <div class="audio-wave-animation">
+                        <span></span><span></span><span></span><span></span><span></span>
+                    </div>
+                    <h4 style="margin: 14px 0 6px; font-weight: 800; color: var(--primary);">AI is Listening to Call Recording...</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">Transcribing customer dialogue, extracting issue details & predicting urgency.</p>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="modal-actions-alt" style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-secondary" onclick="window.closeAudioTicketModal()">Cancel</button>
+                    <button type="submit" id="btn-submit-audio-ticket" class="btn btn-primary" disabled style="min-width: 180px;">
+                        <span id="btn-audio-submit-text"><i class="fas fa-magic"></i> Generate Ticket</span>
+                        <i id="btn-audio-submit-spinner" class="fas fa-spinner fa-spin" style="display: none; margin-left: 6px;"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modular JS Scripts -->
+
     <script src="js/api.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/auth.js"></script>

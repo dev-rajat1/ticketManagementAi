@@ -150,6 +150,8 @@ window.openDetailModal = async function(id) {
     document.getElementById('d-status').innerHTML = '';
     document.getElementById('d-creator').innerHTML = '<div class="skeleton-text" style="width: 150px;"></div>';
     document.getElementById('ai-summary-box').style.display = 'none';
+    const callRecBoxSkeleton = document.getElementById('call-recording-box');
+    if (callRecBoxSkeleton) callRecBoxSkeleton.style.display = 'none';
 
     // Show modal immediately so user sees the skeleton loading state
     document.getElementById('detail-modal').style.display = 'flex';
@@ -166,6 +168,24 @@ window.openDetailModal = async function(id) {
         document.getElementById('d-status').className = `badge status-${t.status}`;
         document.getElementById('d-creator').innerText = t.createdBy?.name || 'Email User';
 
+        // Check for Call Recording Audio attachment
+        const callRecBox = document.getElementById('call-recording-box');
+        const callRecPlayer = document.getElementById('call-recording-player');
+        if (callRecBox && callRecPlayer) {
+            const audioAtt = t.attachments?.find(att => 
+                (att.mimeType && att.mimeType.startsWith('audio/')) || 
+                /\.(mp3|wav|m4a|ogg|webm|aac|flac)$/i.test(att.filename || '')
+            );
+            if (audioAtt) {
+                const baseHost = (window.ENV_BACKEND_URL || 'https://ticketmanagementai.onrender.com').replace(/\/$/, '');
+                callRecPlayer.src = audioAtt.fileUrl.startsWith('http') ? audioAtt.fileUrl : `${baseHost}${audioAtt.fileUrl}`;
+                callRecBox.style.display = 'block';
+            } else {
+                callRecBox.style.display = 'none';
+                callRecPlayer.src = '';
+            }
+        }
+
         const aiSummaryBox = document.getElementById('ai-summary-box');
         aiSummaryBox.style.display = 'block';
         if (t.aiSummary) {
@@ -180,9 +200,10 @@ window.openDetailModal = async function(id) {
         
         const sentimentEl = document.getElementById('d-ai-sentiment');
         sentimentEl.className = 'badge';
-        if(t.aiSentiment === 'NEGATIVE') sentimentEl.classList.add('status-CLOSED'); 
-        else if(t.aiSentiment === 'POSITIVE') sentimentEl.classList.add('status-RESOLVED');
+        if(t.aiSentiment === 'NEGATIVE' || t.aiSentiment === 'frustrated' || t.aiSentiment === 'angry') sentimentEl.classList.add('status-CLOSED'); 
+        else if(t.aiSentiment === 'POSITIVE' || t.aiSentiment === 'positive') sentimentEl.classList.add('status-RESOLVED');
         else sentimentEl.classList.add('status-IN_PROGRESS');
+
 
         const isStaff = window.currentUser.role !== 'USER';
         document.getElementById('admin-actions').style.display = isStaff ? 'block' : 'none';
@@ -508,3 +529,125 @@ window.bulkDeleteTickets = async function() {
         } else window.showToast('Bulk delete failed', 'error');
     } catch (e) { window.showToast('Error', 'error'); }
 };
+
+// ─── Call Recording to AI Ticket Handlers ──────────────────
+let selectedAudioFile = null;
+
+window.openAudioTicketModal = function() {
+    const modal = document.getElementById('audio-ticket-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        window.clearAudioSelection();
+    }
+};
+
+window.closeAudioTicketModal = function() {
+    const modal = document.getElementById('audio-ticket-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        window.clearAudioSelection();
+    }
+};
+
+window.handleAudioFileSelect = function(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('audio/') && !/\.(mp3|wav|m4a|ogg|webm|aac|flac)$/i.test(file.name)) {
+        window.showToast('Please select a valid audio file (.mp3, .wav, .m4a)', 'error');
+        return;
+    }
+
+    selectedAudioFile = file;
+
+    const card = document.getElementById('audio-file-card');
+    const nameEl = document.getElementById('audio-selected-filename');
+    const sizeEl = document.getElementById('audio-selected-filesize');
+    const player = document.getElementById('audio-preview-element');
+    const submitBtn = document.getElementById('btn-submit-audio-ticket');
+
+    if (nameEl) nameEl.innerText = file.name;
+    if (sizeEl) sizeEl.innerText = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+    if (player) {
+        player.src = URL.createObjectURL(file);
+    }
+    if (card) card.style.display = 'block';
+    if (submitBtn) submitBtn.disabled = false;
+};
+
+window.clearAudioSelection = function() {
+    selectedAudioFile = null;
+    const fileInput = document.getElementById('audio-file-input');
+    const card = document.getElementById('audio-file-card');
+    const player = document.getElementById('audio-preview-element');
+    const submitBtn = document.getElementById('btn-submit-audio-ticket');
+    const procState = document.getElementById('audio-processing-state');
+    const btnText = document.getElementById('btn-audio-submit-text');
+    const btnSpinner = document.getElementById('btn-audio-submit-spinner');
+
+    if (fileInput) fileInput.value = '';
+    if (player) {
+        player.pause();
+        player.src = '';
+    }
+    if (card) card.style.display = 'none';
+    if (procState) procState.style.display = 'none';
+    if (submitBtn) submitBtn.disabled = true;
+    if (btnText) btnText.innerHTML = '<i class="fas fa-magic"></i> Generate Ticket';
+    if (btnSpinner) btnSpinner.style.display = 'none';
+};
+
+window.submitAudioTicket = async function(e) {
+    if (e) e.preventDefault();
+    if (!selectedAudioFile) {
+        window.showToast('Please upload an audio recording first', 'warning');
+        return;
+    }
+
+    const submitBtn = document.getElementById('btn-submit-audio-ticket');
+    const btnText = document.getElementById('btn-audio-submit-text');
+    const btnSpinner = document.getElementById('btn-audio-submit-spinner');
+    const procState = document.getElementById('audio-processing-state');
+
+    if (submitBtn) submitBtn.disabled = true;
+    if (btnText) btnText.innerText = 'AI Listening & Transcribing...';
+    if (btnSpinner) btnSpinner.style.display = 'inline-block';
+    if (procState) procState.style.display = 'block';
+
+    const formData = new FormData();
+    formData.append('audio', selectedAudioFile);
+
+    try {
+        const token = localStorage.getItem('token');
+        const baseHost = (window.ENV_BACKEND_URL || 'https://ticketmanagementai.onrender.com').replace(/\/$/, '');
+        const res = await fetch(`${baseHost}/api/tickets/from-audio`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+
+        const data = await res.json();
+        if (data.success && data.data) {
+            window.showToast('AI Ticket created successfully from recording!', 'success');
+            window.closeAudioTicketModal();
+            window.loadTickets(1);
+            window.updateDashboardStatsSummary();
+            setTimeout(() => {
+                window.openTicketDetail(data.data.id);
+            }, 500);
+        } else {
+            window.showToast(data.message || 'Failed to create ticket from audio', 'error');
+        }
+    } catch (err) {
+        console.error('Audio ticket submission error:', err);
+        window.showToast('Network error while processing audio recording', 'error');
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+        if (btnText) btnText.innerHTML = '<i class="fas fa-magic"></i> Generate Ticket';
+        if (btnSpinner) btnSpinner.style.display = 'none';
+        if (procState) procState.style.display = 'none';
+    }
+};
+

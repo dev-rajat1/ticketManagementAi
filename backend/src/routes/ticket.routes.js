@@ -19,7 +19,8 @@ import {
   getHistory,
   bulkAction,
   getAiSummary,
-  getAiSuggestions
+  getAiSuggestions,
+  createFromAudio,
 } from '../controllers/ticket.controller.js';
 
 // Middleware
@@ -55,12 +56,20 @@ const fileFilter = (_req, file, cb) => {
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'text/plain',
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/wav',
+    'audio/x-wav',
+    'audio/m4a',
+    'audio/x-m4a',
+    'audio/ogg',
+    'audio/webm',
   ];
 
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  if (allowedMimeTypes.includes(file.mimetype) || file.mimetype.startsWith('audio/')) {
     cb(null, true);
   } else {
-    cb(new Error('File type not allowed. Accepted: images, PDFs, DOC/DOCX, TXT'), false);
+    cb(new Error('File type not allowed. Accepted: images, PDFs, DOC/DOCX, TXT, Audio'), false);
   }
 };
 
@@ -71,6 +80,22 @@ const upload = multer({
   },
   fileFilter,
 });
+
+// Audio specific upload with up to 25MB limit
+const audioUpload = multer({
+  storage,
+  limits: {
+    fileSize: 25 * 1024 * 1024,
+  },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('audio/') || /\.(mp3|wav|m4a|ogg|webm|aac|flac)$/i.test(file.originalname)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only audio recordings are allowed (.mp3, .wav, .m4a, .ogg, .webm)'), false);
+    }
+  },
+});
+
 
 // ─── All routes require authentication ──────────────────────
 router.use(authenticate);
@@ -136,6 +161,7 @@ const bulkActionValidation = [
 
 router.get('/', findAllValidation, validateRequest, findAll);
 router.post('/', createTicketValidation, validateRequest, create);
+router.post('/from-audio', audioUpload.single('audio'), createFromAudio);
 router.post(
   '/bulk-action',
   authorize('ADMIN', 'AGENT'),

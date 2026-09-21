@@ -60,6 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const createTicketForm = document.getElementById('create-ticket-form');
     if (createTicketForm) createTicketForm.onsubmit = window.submitCreateTicket;
 
+    const audioTicketForm = document.getElementById('audio-ticket-form');
+    if (audioTicketForm) audioTicketForm.onsubmit = window.submitAudioTicket;
+
     const userForm = document.getElementById('user-form');
     if (userForm) userForm.onsubmit = window.submitUserForm;
 

@@ -1,6 +1,7 @@
 import prisma from '../config/database.js';
 import emailService from './email.service.js';
 import aiService from './ai.service.js';
+import fs from 'fs/promises';
 import { CATEGORY_KEYWORDS, PRIORITY_KEYWORDS, SENTIMENT_KEYWORDS } from '../utils/constants.js';
 
 /**
@@ -439,6 +440,72 @@ class TicketService {
   async bulkDelete(ticketIds) {
     return (await prisma.ticket.deleteMany({ where: { id: { in: ticketIds } } })).count;
   }
+
+  /**
+   * Create a new ticket directly from an uploaded call recording audio file
+   */
+  async createFromAudio(file, userId) {
+    if (!file) throw new Error('Audio file is required');
+
+    const fileBuffer = await fs.readFile(file.path);
+
+    // Analyze recording with Gemini Multimodal Audio
+    const aiData = await aiService.generateTicketFromAudio(fileBuffer, file.mimetype, file.originalname);
+
+    // Generate unique ticket identifier
+    const ticketNumber = await this.#generateTicketNumber();
+
+    // Create ticket with audio attachment & full dialogue transcript in comments
+    const ticket = await prisma.ticket.create({
+      data: {
+        ticketNumber,
+        subject: aiData.subject,
+        description: aiData.description,
+        priority: aiData.priority,
+        category: aiData.category,
+        aiSentiment: aiData.sentiment,
+        aiSummary: aiData.description,
+        createdById: userId,
+        attachments: {
+          create: {
+            filename: file.originalname,
+            fileUrl: `/uploads/${file.filename}`,
+            mimeType: file.mimetype,
+            fileSize: file.size,
+            uploadedBy: userId,
+          }
+        },
+        comments: {
+          create: {
+            content: `🎙️ **Call Recording Transcript & Analysis:**\n\n${aiData.transcript}`,
+            isAiGenerated: true,
+            userId: userId,
+          }
+        },
+        history: {
+          create: {
+            fieldChanged: 'created',
+            oldValue: null,
+            newValue: 'Created from Call Recording Audio',
+            changedBy: userId,
+          }
+        }
+      },
+      include: {
+        createdBy: { select: TicketService.USER_SELECT },
+        assignedTo: { select: TicketService.USER_SELECT },
+        attachments: true,
+        comments: {
+          include: {
+            user: { select: TicketService.USER_SELECT }
+          }
+        }
+      }
+    });
+
+    return ticket;
+  }
 }
 
 export default new TicketService();
+
