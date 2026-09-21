@@ -335,20 +335,87 @@ window.regenerateAiSummary = async function() {
     }
 };
 
+let cachedCustomersList = [];
+let isCustomCustomerMode = false;
+
 window.openCreateTicketModal = async function() {
     try {
         const custRes = await window.apiFetch('/users?role=USER');
         const custData = await custRes.json();
-        document.getElementById('t-customer').innerHTML = custData.data.map(c => `<option value="${c.id}">${c.name} (${c.email})</option>`).join('');
+        cachedCustomersList = (custData && custData.data) || [];
+        
+        const customerSelect = document.getElementById('t-customer');
+        if (customerSelect) {
+            if (cachedCustomersList.length > 0) {
+                customerSelect.innerHTML = cachedCustomersList.map(c => `<option value="${c.id}">${c.name} (${c.email})</option>`).join('');
+            } else {
+                customerSelect.innerHTML = '<option value="">-- No existing customers found --</option>';
+            }
+        }
 
         const agentRes = await window.apiFetch('/users?role=AGENT');
         const agentData = await agentRes.json();
-        document.getElementById('t-assignee').innerHTML = '<option value="">-- Unassigned --</option>' + agentData.data.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+        const assigneeSelect = document.getElementById('t-assignee');
+        if (assigneeSelect) {
+            assigneeSelect.innerHTML = '<option value="">-- Unassigned --</option>' + ((agentData && agentData.data) || []).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+        }
 
         document.getElementById('create-ticket-form').reset();
+        
+        // Reset customer mode to default dropdown
+        isCustomCustomerMode = false;
+        const selectMode = document.getElementById('customer-select-mode');
+        const customMode = document.getElementById('customer-custom-mode');
+        const btnToggle = document.getElementById('btn-toggle-customer-mode');
+        if (selectMode) selectMode.style.display = 'block';
+        if (customMode) customMode.style.display = 'none';
+        if (btnToggle) btnToggle.innerHTML = '<i class="fas fa-edit"></i> Type Custom Email / Edit';
+
         document.getElementById('create-ticket-modal').style.display = 'flex';
     } catch (e) {
+        console.error('Failed to load users:', e);
         window.showToast('Failed to load users', 'error');
+    }
+};
+
+window.toggleCustomerMode = function() {
+    isCustomCustomerMode = !isCustomCustomerMode;
+    const selectMode = document.getElementById('customer-select-mode');
+    const customMode = document.getElementById('customer-custom-mode');
+    const btnToggle = document.getElementById('btn-toggle-customer-mode');
+    const selectEl = document.getElementById('t-customer');
+    const nameInput = document.getElementById('t-custom-name');
+    const emailInput = document.getElementById('t-custom-email');
+
+    if (isCustomCustomerMode) {
+        if (selectMode) selectMode.style.display = 'none';
+        if (customMode) customMode.style.display = 'block';
+        if (btnToggle) btnToggle.innerHTML = '<i class="fas fa-list"></i> Select from Dropdown';
+
+        // Pre-fill fields from currently selected dropdown item for convenience
+        if (selectEl && selectEl.value && cachedCustomersList.length > 0) {
+            const found = cachedCustomersList.find(c => c.id === selectEl.value);
+            if (found && (!emailInput.value || emailInput.value === '')) {
+                if (nameInput) nameInput.value = found.name || '';
+                if (emailInput) emailInput.value = found.email || '';
+            }
+        }
+        if (emailInput) emailInput.focus();
+    } else {
+        if (selectMode) selectMode.style.display = 'block';
+        if (customMode) customMode.style.display = 'none';
+        if (btnToggle) btnToggle.innerHTML = '<i class="fas fa-edit"></i> Type Custom Email / Edit';
+    }
+};
+
+window.handleCustomerDropdownChange = function(selectEl) {
+    if (!selectEl) return;
+    const found = cachedCustomersList.find(c => c.id === selectEl.value);
+    if (found) {
+        const nameInput = document.getElementById('t-custom-name');
+        const emailInput = document.getElementById('t-custom-email');
+        if (nameInput) nameInput.value = found.name || '';
+        if (emailInput) emailInput.value = found.email || '';
     }
 };
 
@@ -357,31 +424,63 @@ window.closeCreateTicketModal = function() {
 };
 
 window.submitCreateTicket = async function(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    const subject = document.getElementById('t-subject')?.value?.trim();
+    const description = document.getElementById('t-description')?.value?.trim();
+    const priority = document.getElementById('t-priority')?.value || 'MEDIUM';
+    const category = document.getElementById('t-category')?.value || 'General';
+    const assignedToId = document.getElementById('t-assignee')?.value || null;
+
+    if (!subject) {
+        window.showToast('Please enter ticket subject', 'warning');
+        return;
+    }
+    if (!description) {
+        window.showToast('Please enter ticket description', 'warning');
+        return;
+    }
+
     const data = {
-        createdById: document.getElementById('t-customer').value,
-        subject: document.getElementById('t-subject').value,
-        description: document.getElementById('t-description').value,
-        priority: document.getElementById('t-priority').value,
-        category: document.getElementById('t-category').value,
-        assignedToId: document.getElementById('t-assignee').value || null
+        subject,
+        description,
+        priority,
+        category,
+        assignedToId
     };
+
+    if (isCustomCustomerMode) {
+        const customEmail = document.getElementById('t-custom-email')?.value?.trim();
+        const customName = document.getElementById('t-custom-name')?.value?.trim();
+        if (!customEmail) {
+            window.showToast('Please provide a customer email', 'warning');
+            document.getElementById('t-custom-email')?.focus();
+            return;
+        }
+        data.customerEmail = customEmail;
+        data.customerName = customName;
+    } else {
+        const custSelect = document.getElementById('t-customer');
+        if (custSelect && custSelect.value) {
+            data.createdById = custSelect.value;
+        }
+    }
 
     try {
         const res = await window.apiFetch('/tickets', {
             method: 'POST',
             body: JSON.stringify(data)
         });
-        if (res.ok) {
-            window.showToast('Ticket created successfully');
+        const result = await res.json();
+        if (res.ok && result.success) {
+            window.showToast('Ticket created successfully', 'success');
             window.closeCreateTicketModal();
             window.loadTickets(1);
             window.updateDashboardStatsSummary();
         } else {
-            const err = await res.json();
-            window.showToast(err.message, 'error');
+            window.showToast(result.message || 'Error creating ticket', 'error');
         }
-    } catch (e) {
+    } catch (err) {
+        console.error('Error creating ticket:', err);
         window.showToast('Error creating ticket', 'error');
     }
 };
@@ -584,8 +683,12 @@ window.clearAudioSelection = function() {
     const procState = document.getElementById('audio-processing-state');
     const btnText = document.getElementById('btn-audio-submit-text');
     const btnSpinner = document.getElementById('btn-audio-submit-spinner');
+    const custName = document.getElementById('audio-customer-name');
+    const custEmail = document.getElementById('audio-customer-email');
 
     if (fileInput) fileInput.value = '';
+    if (custName) custName.value = '';
+    if (custEmail) custEmail.value = '';
     if (player) {
         player.pause();
         player.src = '';
@@ -616,6 +719,11 @@ window.submitAudioTicket = async function(e) {
 
     const formData = new FormData();
     formData.append('audio', selectedAudioFile);
+
+    const custName = document.getElementById('audio-customer-name')?.value?.trim();
+    const custEmail = document.getElementById('audio-customer-email')?.value?.trim();
+    if (custName) formData.append('customerName', custName);
+    if (custEmail) formData.append('customerEmail', custEmail);
 
     try {
         const token = localStorage.getItem('token');

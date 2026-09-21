@@ -1,5 +1,8 @@
+import prisma from '../config/database.js';
 import ticketService from '../services/ticket.service.js';
 import aiService from '../services/ai.service.js';
+import bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { ROLES } from '../utils/constants.js';
 
@@ -10,18 +13,28 @@ import { ROLES } from '../utils/constants.js';
  */
 export const create = async (req, res, next) => {
   try {
-    const { subject, description, priority, category, dueDate, assignedToId, createdById } = req.body;
+    const { subject, description, priority, category, dueDate, assignedToId, createdById, customerName, customerEmail } = req.body;
 
     let finalCreatedById = req.user.id;
-    let finalAssignedToId = assignedToId;
+    let finalAssignedToId = (req.user.role === ROLES.ADMIN || req.user.role === ROLES.AGENT) ? assignedToId : null;
 
-    // Admin can specify the customer (createdById) and assignee
-    if (req.user.role === ROLES.ADMIN) {
-      if (createdById) finalCreatedById = createdById;
-    } else {
-      // Regular staff/users can't set assignee or specify another creator
-      finalAssignedToId = null;
-      finalCreatedById = req.user.id;
+    // If custom customerEmail is provided by staff, find or automatically register the customer
+    if ((req.user.role === ROLES.ADMIN || req.user.role === ROLES.AGENT) && customerEmail && customerEmail.trim()) {
+      const cleanEmail = customerEmail.trim().toLowerCase();
+      let customer = await prisma.user.findUnique({ where: { email: cleanEmail } });
+      if (!customer) {
+        customer = await prisma.user.create({
+          data: {
+            email: cleanEmail,
+            name: customerName?.trim() || cleanEmail.split('@')[0],
+            role: 'USER',
+            passwordHash: await bcrypt.hash(uuidv4(), 10),
+          }
+        });
+      }
+      finalCreatedById = customer.id;
+    } else if ((req.user.role === ROLES.ADMIN || req.user.role === ROLES.AGENT) && createdById) {
+      finalCreatedById = createdById;
     }
 
     const ticket = await ticketService.create(
@@ -41,6 +54,7 @@ export const create = async (req, res, next) => {
     next(error);
   }
 };
+
 
 /**
  * @desc    Get all tickets with pagination and filters
@@ -257,10 +271,15 @@ export const createFromAudio = async (req, res, next) => {
       });
     }
 
-    const ticket = await ticketService.createFromAudio(req.file, req.user.id);
+    const { customerName, customerEmail } = req.body;
+    const ticket = await ticketService.createFromAudio(req.file, req.user.id, {
+      customerName,
+      customerEmail
+    });
     return successResponse(res, 'Ticket created from audio recording successfully', ticket, 201);
   } catch (error) {
     next(error);
   }
 };
+
 

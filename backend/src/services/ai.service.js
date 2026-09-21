@@ -190,11 +190,11 @@ Sentiment:`;
   /**
    * Transcribes and analyzes call recording audio to generate ticket details
    */
-  async generateTicketFromAudio(fileBuffer, mimeType, filename = 'recording.mp3') {
+  async generateTicketFromAudio(fileBuffer, mimeType, filename = 'recording.mp3', customerName = '') {
     try {
       if (!process.env.GEMINI_API_KEY) {
         console.warn("⚠️ AI Warning: GEMINI_API_KEY is missing. Using fallback for audio ticket.");
-        return this.#fallbackAudioTicket(filename);
+        return this.#fallbackAudioTicket(filename, customerName);
       }
 
       // Valid audio mimeTypes for Gemini: audio/mp3, audio/wav, audio/mpeg, audio/ogg, audio/m4a, etc.
@@ -202,6 +202,7 @@ Sentiment:`;
       if (mimeType === 'audio/mp3') validMime = 'audio/mpeg';
 
       const prompt = `You are an expert customer support AI listening to a recorded customer call.
+${customerName ? `Note: The customer caller's name is "${customerName}".` : ''}
 Analyze the audio thoroughly, transcribe the dialogue accurately, and return ONLY a valid JSON object matching this schema:
 {
   "subject": "A concise 5 to 8 word descriptive title of the customer issue",
@@ -213,6 +214,7 @@ Analyze the audio thoroughly, transcribe the dialogue accurately, and return ONL
 }
 
 Respond ONLY with raw JSON. Do not include markdown code block backticks.`;
+
 
       const audioPart = {
         inlineData: {

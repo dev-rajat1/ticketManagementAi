@@ -115,9 +115,6 @@
                 </div>
                 
                 <div class="top-bar-actions">
-                    <button class="btn btn-audio-ticket" onclick="window.openAudioTicketModal()" title="Upload Call Recording to generate AI ticket" style="padding: 8px 16px; font-size: 0.85rem;">
-                        <i class="fas fa-microphone"></i> Audio Ticket
-                    </button>
                     <button id="theme-toggle" class="btn theme-toggle" title="Toggle Dark/Light Mode">
                         <i class="fas fa-moon"></i>
                     </button>
@@ -337,7 +334,34 @@
                 <button class="close-icon-btn" onclick="window.closeCreateTicketModal()">&times;</button>
             </div>
             <form id="create-ticket-form">
-                <div class="form-group"><label>Customer</label><select id="t-customer" class="input-nm" required></select></div>
+                <div class="form-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label style="margin: 0; font-weight: 700;">Customer</label>
+                        <button type="button" id="btn-toggle-customer-mode" onclick="window.toggleCustomerMode()" style="background: transparent; border: none; color: var(--primary); font-size: 0.82rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                            <i class="fas fa-edit"></i> Type Custom Email / Edit
+                        </button>
+                    </div>
+
+                    <!-- Mode 1: Select from existing customers -->
+                    <div id="customer-select-mode">
+                        <select id="t-customer" class="input-nm" onchange="window.handleCustomerDropdownChange(this)"></select>
+                    </div>
+
+                    <!-- Mode 2: Custom editable email and name -->
+                    <div id="customer-custom-mode" style="display: none; background: rgba(99, 102, 241, 0.05); padding: 12px; border-radius: 12px; border: 1px dashed var(--primary); margin-top: 5px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">Customer Name</label>
+                                <input type="text" id="t-custom-name" class="input-nm" placeholder="e.g. Rahul Sharma" style="padding: 9px 12px; font-size: 0.88rem;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">Customer Email *</label>
+                                <input type="email" id="t-custom-email" class="input-nm" placeholder="e.g. rahul@example.com" style="padding: 9px 12px; font-size: 0.88rem;">
+                            </div>
+                        </div>
+                        <small style="display: block; margin-top: 6px; font-size: 0.75rem; color: var(--text-secondary);">Enter custom customer name and email. AI and system will automatically link or create their account.</small>
+                    </div>
+                </div>
                 <div class="form-group"><label>Subject</label><input type="text" id="t-subject" required class="input-nm" placeholder="Ticket title"></div>
                 <div class="form-group"><label>Description</label><textarea id="t-description" rows="4" required class="input-nm" placeholder="Describe the issue..."></textarea></div>
                 <div class="form-group-row">
@@ -553,7 +577,24 @@
             </div>
 
             <form id="audio-ticket-form">
+                <!-- Customer Details -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                    <div>
+                        <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">
+                            <i class="fas fa-user"></i> Customer Name
+                        </label>
+                        <input type="text" id="audio-customer-name" class="input-nm" placeholder="e.g. Rahul Sharma (Optional)" style="padding: 10px 14px; font-size: 0.88rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">
+                            <i class="fas fa-envelope"></i> Customer Email
+                        </label>
+                        <input type="email" id="audio-customer-email" class="input-nm" placeholder="e.g. rahul@example.com (Optional)" style="padding: 10px 14px; font-size: 0.88rem;">
+                    </div>
+                </div>
+
                 <!-- Dropzone for audio file -->
+
                 <div id="audio-dropzone" class="audio-dropzone" onclick="document.getElementById('audio-file-input').click()">
                     <input type="file" id="audio-file-input" accept="audio/*,.mp3,.wav,.m4a,.ogg,.webm" style="display: none;" onchange="window.handleAudioFileSelect(event)">
                     <div class="dropzone-icon">

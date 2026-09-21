@@ -444,13 +444,36 @@ class TicketService {
   /**
    * Create a new ticket directly from an uploaded call recording audio file
    */
-  async createFromAudio(file, userId) {
+  async createFromAudio(file, agentId, extraData = {}) {
     if (!file) throw new Error('Audio file is required');
+
+    const { customerName, customerEmail } = extraData;
+    let targetUserId = agentId;
+
+    // Associate with customer user if email is provided
+    if (customerEmail && customerEmail.trim()) {
+      const cleanEmail = customerEmail.trim().toLowerCase();
+      let customerUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
+      if (!customerUser) {
+        const bcrypt = (await import('bcrypt')).default;
+        const { v4: uuidv4 } = await import('uuid');
+        const defaultName = customerName?.trim() || cleanEmail.split('@')[0];
+        customerUser = await prisma.user.create({
+          data: {
+            email: cleanEmail,
+            name: defaultName,
+            role: 'USER',
+            passwordHash: await bcrypt.hash(uuidv4(), 10),
+          }
+        });
+      }
+      targetUserId = customerUser.id;
+    }
 
     const fileBuffer = await fs.readFile(file.path);
 
-    // Analyze recording with Gemini Multimodal Audio
-    const aiData = await aiService.generateTicketFromAudio(fileBuffer, file.mimetype, file.originalname);
+    // Analyze recording with Gemini Multimodal Audio, passing customerName context
+    const aiData = await aiService.generateTicketFromAudio(fileBuffer, file.mimetype, file.originalname, customerName);
 
     // Generate unique ticket identifier
     const ticketNumber = await this.#generateTicketNumber();
@@ -465,21 +488,21 @@ class TicketService {
         category: aiData.category,
         aiSentiment: aiData.sentiment,
         aiSummary: aiData.description,
-        createdById: userId,
+        createdById: targetUserId,
         attachments: {
           create: {
             filename: file.originalname,
             fileUrl: `/uploads/${file.filename}`,
             mimeType: file.mimetype,
             fileSize: file.size,
-            uploadedBy: userId,
+            uploadedBy: agentId,
           }
         },
         comments: {
           create: {
             content: `🎙️ **Call Recording Transcript & Analysis:**\n\n${aiData.transcript}`,
             isAiGenerated: true,
-            userId: userId,
+            userId: agentId,
           }
         },
         history: {
@@ -487,7 +510,7 @@ class TicketService {
             fieldChanged: 'created',
             oldValue: null,
             newValue: 'Created from Call Recording Audio',
-            changedBy: userId,
+            changedBy: agentId,
           }
         }
       },
