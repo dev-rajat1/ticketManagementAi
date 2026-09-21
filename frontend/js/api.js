@@ -1,5 +1,5 @@
-// Backend Base URL (Render deploy hone ke baad apna Render URL yahan paste karein)
-const BACKEND_URL = window.ENV_BACKEND_URL || 'https://remarkable-gentleness-production-525d.up.railway.app';
+// Backend Base URL (Render Live Deployment)
+const BACKEND_URL = window.ENV_BACKEND_URL || 'https://ticketmanagementai.onrender.com';
 const API_URL = `${BACKEND_URL.replace(/\/$/, '')}/api`;
 
 // Global State

@@ -1,4 +1,4 @@
-const API_URL = (window.ENV_BACKEND_URL || 'http://localhost:5000') + '/api';
+const API_URL = (window.ENV_BACKEND_URL || 'https://ticketmanagementai.onrender.com') + '/api';
 
 // --- Global Core State ---
 let currentUser = null;
