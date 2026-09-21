@@ -31,16 +31,17 @@ SmartSupport is a modern, full-stack IT Support and Helpdesk ticketing system po
 - Multer (File Uploads)
 
 **Deployment:**
-- Railway.app (Backend & Frontend services)
-- Supabase (Managed PostgreSQL Database)
+- **Frontend:** Vercel
+- **Backend:** Render (Web Service)
+- **Database:** Supabase (Managed PostgreSQL)
 
 ---
 
 ## 🚀 Live Demo
-- **Frontend URL:** [https://ticketmanagementai-production.up.railway.app](https://ticketmanagementai-production.up.railway.app)
-- **Backend API Docs (Swagger):** [https://remarkable-gentleness-production-525d.up.railway.app/api/docs](https://remarkable-gentleness-production-525d.up.railway.app/api/docs)
+- **Frontend URL:** [https://ticket-management-8ue192qgg-ace-5078.vercel.app/](https://ticket-management-8ue192qgg-ace-5078.vercel.app/)
+- **Backend API Docs (Swagger):** [https://ticketmanagementai.onrender.com/api/docs](https://ticketmanagementai.onrender.com/api/docs)
 
-*(Note: These are sample URLs. If the project is sleeping on the free tier, it might take a few seconds to wake up).*
+*(Note: Render free tier services go to sleep after 15 minutes of inactivity. If testing after some idle time, please allow ~30-40 seconds for the backend to wake up).*
 
 ---
 
