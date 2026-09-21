@@ -1,5 +1,6 @@
-// Railway Backend URL directly hardcoded to prevent injection issues
-const API_URL = 'https://remarkable-gentleness-production-525d.up.railway.app/api';
+// Backend Base URL (Render deploy hone ke baad apna Render URL yahan paste karein)
+const BACKEND_URL = window.ENV_BACKEND_URL || 'https://remarkable-gentleness-production-525d.up.railway.app';
+const API_URL = `${BACKEND_URL.replace(/\/$/, '')}/api`;
 
 // Global State
 window.currentUser = null;
