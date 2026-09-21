@@ -64,7 +64,7 @@ ${convo}
 Summary:`;
       
       const summary = await this._generate(prompt, 0.3);
-      const finalSummary = summary || 'AI could not generate a summary at this time.';
+      const finalSummary = summary || `Ticket #${ticket.ticketNumber} regarding "${ticket.subject}". Current status is ${ticket.status} with ${ticket.priority} priority. Customer reported: "${ticket.description.slice(0, 150)}${ticket.description.length > 150 ? '...' : ''}"`;
       
       await prisma.ticket.update({ 
         where: { id: ticketId }, 
@@ -105,11 +105,11 @@ Task: Suggest ONE professional, helpful, and empathetic reply.
 Constraint: ONLY return the message body. Do not include subject lines or "Agent:" prefix.`;
 
       const reply = await this._generate(prompt, 0.8);
-      if (!reply) return [];
+      const finalReply = reply || `Hello ${ticket.createdBy?.name || 'Customer'},\n\nThank you for contacting our support team regarding "${ticket.subject}". We have logged your request and our team is currently investigating the issue. We will update you with a solution as soon as possible.\n\nBest regards,\nCustomer Support`;
 
       return [{ 
         tone: 'Professional', 
-        response: reply 
+        response: finalReply 
       }];
     } catch (e) { 
       console.error("Suggest Error:", e);

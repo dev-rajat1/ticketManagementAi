@@ -62,6 +62,10 @@ model Ticket {
   attachments  Attachment[]
   history      TicketHistory[]
 
+  @@index([status])
+  @@index([createdById])
+  @@index([assignedToId])
+  @@index([createdAt])
   @@map("tickets")
 }
 
@@ -74,6 +78,8 @@ model Comment {
   ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   userId   String @map("user_id")
   user     User   @relation(fields: [userId], references: [id])
+
+  @@index([ticketId])
   @@map("comments")
 }
 
@@ -88,6 +94,8 @@ model Attachment {
   ticket     Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   uploadedBy String @map("uploaded_by")
   user       User   @relation(fields: [uploadedBy], references: [id])
+
+  @@index([ticketId])
   @@map("attachments")
 }
 
@@ -101,6 +109,8 @@ model TicketHistory {
   ticket    Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   changedBy String @map("changed_by")
   user      User   @relation(fields: [changedBy], references: [id])
+
+  @@index([ticketId])
   @@map("ticket_history")
 }
 

@@ -10,5 +10,6 @@ if (!apiKey) {
 // Initialize the SDK
 const genAI = new GoogleGenerativeAI(apiKey || '');
 
-// Initialize the AI Model
-export const aiModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+// Initialize the AI Model (gemini-1.5-flash is fast, reliable, and available on free tier)
+const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+export const aiModel = genAI.getGenerativeModel({ model: modelName });

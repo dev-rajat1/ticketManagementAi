@@ -263,9 +263,12 @@ window.getAiSuggestion = async function() {
     try {
         const res = await window.apiFetch(`/tickets/${window.currentTicketId}/ai-suggest`);
         const d = await res.json();
-        if (d.success && d.data.length > 0) {
+        if (d.success && d.data && d.data.length > 0) {
             document.getElementById('ai-suggestion-box').style.display = 'block';
             document.getElementById('ai-suggested-text').innerText = d.data[0].response;
+            window.showToast('AI suggestion ready!');
+        } else {
+            window.showToast('Could not generate suggestion', 'warning');
         }
     } catch (e) {
         window.showToast('AI unavailable', 'error');

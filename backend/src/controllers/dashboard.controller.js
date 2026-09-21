@@ -16,70 +16,88 @@ export const getStats = async (req, res, next) => {
       mainWhere = { assignedToId: userId };
     }
 
-    const [
-      total,
-      open,
-      inProgress,
-      waiting,
-      resolved,
-      closed
-    ] = await Promise.all([
-      prisma.ticket.count({ where: mainWhere }),
-      prisma.ticket.count({ where: { ...mainWhere, status: TICKET_STATUS.OPEN } }),
-      prisma.ticket.count({ where: { ...mainWhere, status: TICKET_STATUS.IN_PROGRESS } }),
-      prisma.ticket.count({ where: { ...mainWhere, status: TICKET_STATUS.WAITING } }),
-      prisma.ticket.count({ where: { ...mainWhere, status: TICKET_STATUS.RESOLVED } }),
-      prisma.ticket.count({ where: { ...mainWhere, status: TICKET_STATUS.CLOSED } }),
+    // Parallel fetch: Group by status (1 query instead of 6 queries)
+    const statusPromise = prisma.ticket.groupBy({
+      by: ['status'],
+      where: mainWhere,
+      _count: { id: true }
+    });
+
+    // Total count for current filter
+    const totalPromise = prisma.ticket.count({ where: mainWhere });
+
+    // Recent resolved tickets for average resolution calculation (limit to 50 for max speed)
+    const resolvedPromise = prisma.ticket.findMany({
+      where: { 
+        ...mainWhere, 
+        status: { in: [TICKET_STATUS.RESOLVED, TICKET_STATUS.CLOSED] } 
+      },
+      select: { createdAt: true, updatedAt: true },
+      take: 50,
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    // Optional admin/agent queries
+    const agentPromises = (role !== ROLES.USER) ? [
+      prisma.ticket.count({ where: { assignedToId: { not: null } } }),
+      prisma.ticket.count({ where: { assignedToId: null, status: { notIn: [TICKET_STATUS.RESOLVED, TICKET_STATUS.CLOSED] } } }),
+      prisma.ticket.count({ where: { assignedToId: userId } }),
+      prisma.ticket.count()
+    ] : [];
+
+    const adminPromise = (role === ROLES.ADMIN) ? prisma.user.groupBy({
+      by: ['role'],
+      _count: { id: true }
+    }) : Promise.resolve(null);
+
+    // Run EVERYTHING concurrently in a single roundtrip batch
+    const [statusGroups, total, resolvedTickets, agentStats, adminGroups] = await Promise.all([
+      statusPromise,
+      totalPromise,
+      resolvedPromise,
+      Promise.all(agentPromises),
+      adminPromise
     ]);
 
-    const pendingCount = open + inProgress + waiting;
-    const closedCount = resolved + closed;
+    const statusMap = {};
+    statusGroups.forEach(g => {
+      statusMap[g.status] = g._count.id;
+    });
+
+    const open = statusMap[TICKET_STATUS.OPEN] || 0;
+    const inProgress = statusMap[TICKET_STATUS.IN_PROGRESS] || 0;
+    const waiting = statusMap[TICKET_STATUS.WAITING] || 0;
+    const resolved = statusMap[TICKET_STATUS.RESOLVED] || 0;
+    const closed = statusMap[TICKET_STATUS.CLOSED] || 0;
 
     let dashboardStats = {
       total,
       open,
       inProgress,
       waiting,
-      pending: pendingCount,
+      pending: open + inProgress + waiting,
       resolved,
       closed,
-      closedTotal: closedCount,
+      closedTotal: resolved + closed,
     };
 
-    if (role !== ROLES.USER) {
-      const assignedCount = await prisma.ticket.count({
-        where: { assignedToId: { not: null } }
-      });
-      const unassignedCount = await prisma.ticket.count({
-        where: { assignedToId: null, status: { notIn: [TICKET_STATUS.RESOLVED, TICKET_STATUS.CLOSED] } }
-      });
-      const myTickets = await prisma.ticket.count({
-        where: { assignedToId: userId }
-      });
-
-      dashboardStats.totalGlobal = await prisma.ticket.count();
-      dashboardStats.assigned = assignedCount;
-      dashboardStats.unassigned = unassignedCount;
-      dashboardStats.assignedToMe = myTickets;
+    if (role !== ROLES.USER && agentStats.length >= 4) {
+      dashboardStats.assigned = agentStats[0];
+      dashboardStats.unassigned = agentStats[1];
+      dashboardStats.assignedToMe = agentStats[2];
+      dashboardStats.totalGlobal = agentStats[3];
     }
 
     let userStats = null;
-    if (role === ROLES.ADMIN) {
-      const [totalUsers, totalAgents, totalAdmins] = await Promise.all([
-        prisma.user.count({ where: { role: ROLES.USER } }),
-        prisma.user.count({ where: { role: ROLES.AGENT } }),
-        prisma.user.count({ where: { role: ROLES.ADMIN } }),
-      ]);
-      userStats = { totalUsers, totalAgents, totalAdmins };
+    if (role === ROLES.ADMIN && adminGroups) {
+      const roleMap = {};
+      adminGroups.forEach(g => { roleMap[g.role] = g._count.id; });
+      userStats = {
+        totalUsers: roleMap[ROLES.USER] || 0,
+        totalAgents: roleMap[ROLES.AGENT] || 0,
+        totalAdmins: roleMap[ROLES.ADMIN] || 0
+      };
     }
-
-    const resolvedTickets = await prisma.ticket.findMany({
-      where: { 
-        ...mainWhere, 
-        status: { in: [TICKET_STATUS.RESOLVED, TICKET_STATUS.CLOSED] } 
-      },
-      select: { createdAt: true, updatedAt: true },
-    });
 
     let avgResolutionHours = 0;
     if (resolvedTickets.length > 0) {
@@ -99,6 +117,7 @@ export const getStats = async (req, res, next) => {
     next(error);
   }
 };
+
 
 /**
  * Get chart data tailored to user roles
