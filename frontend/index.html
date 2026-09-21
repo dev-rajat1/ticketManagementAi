@@ -115,6 +115,9 @@
                 </div>
                 
                 <div class="top-bar-actions">
+                    <button class="btn btn-audio-ticket" onclick="window.openAudioTicketModal()" title="Upload Call Recording to generate AI ticket" style="padding: 8px 16px; font-size: 0.85rem;">
+                        <i class="fas fa-microphone"></i> Audio Ticket
+                    </button>
                     <button id="theme-toggle" class="btn theme-toggle" title="Toggle Dark/Light Mode">
                         <i class="fas fa-moon"></i>
                     </button>
@@ -141,10 +144,10 @@
                             <p class="subtitle">Manage and track all customer requests</p>
                         </div>
                         <div class="action-group">
-                            <button id="btn-create-ticket-main" class="btn btn-primary" style="display: none;" onclick="window.openCreateTicketModal()">
+                            <button id="btn-create-ticket-main" class="btn btn-primary" onclick="window.openCreateTicketModal()">
                                 <i class="fas fa-plus"></i> New Ticket
                             </button>
-                            <button id="btn-audio-ticket-main" class="btn btn-secondary-outline" style="display: none;" onclick="window.openAudioTicketModal()" title="Upload Call Recording to generate AI ticket">
+                            <button id="btn-audio-ticket-main" class="btn btn-audio-ticket" onclick="window.openAudioTicketModal()" title="Upload Call Recording to generate AI ticket">
                                 <i class="fas fa-microphone"></i> Audio to Ticket
                             </button>
                             <button class="btn btn-refresh-icon" title="Refresh" onclick="window.loadTickets(1); window.updateDashboardStatsSummary();">

@@ -289,6 +289,34 @@
 
 .btn-refresh-icon:hover { color: var(--primary); background: var(--bg); box-shadow: var(--nm-inset); }
 
+/* Audio to Ticket Button */
+.btn-audio-ticket {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 10px 18px !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap !important;
+}
+
+.btn-audio-ticket:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.55) !important;
+    color: #ffffff !important;
+}
+
+.btn-audio-ticket:active {
+    transform: translateY(0);
+}
+
 /* --- Header Styles --- */
 .top-bar {
     display: flex;
