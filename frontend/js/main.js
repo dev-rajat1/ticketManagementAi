@@ -81,11 +81,11 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(window.searchTimer);
             window.searchTimer = setTimeout(() => {
                 const section = window.currentSection || 'dashboard';
-                if (section === 'dashboard') window.loadTickets(1);
-                else if (section === 'staff') window.loadStaff();
-                else if (section === 'customers') window.loadCustomers();
-                else if (section === 'performance') window.loadAgentPerformance();
-            }, 500);
+                if (section === 'dashboard') window.loadTickets(1, true);
+                else if (section === 'staff') window.loadStaff(true);
+                else if (section === 'customers') window.loadCustomers(true);
+                else if (section === 'performance') window.loadAgentPerformance(true);
+            }, 350);
         });
     }
 

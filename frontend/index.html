@@ -147,7 +147,7 @@
                             <button id="btn-audio-ticket-main" class="btn btn-audio-ticket" onclick="window.openAudioTicketModal()" title="Upload Call Recording to generate AI ticket">
                                 <i class="fas fa-microphone"></i> Audio to Ticket
                             </button>
-                            <button class="btn btn-refresh-icon" title="Refresh" onclick="window.loadTickets(1); window.updateDashboardStatsSummary();">
+                            <button class="btn btn-refresh-icon" title="Refresh" onclick="window.refreshCurrentSection();">
                                 <i class="fas fa-sync-alt"></i> Sync
                             </button>
                             <button id="btn-clear-tickets" class="btn btn-secondary-outline" style="display: none;" onclick="window.clearSelection('tickets')">
@@ -164,7 +164,7 @@
                         <div class="filter-group-left">
                             <div class="filter-item">
                                 <label><i class="fas fa-tag"></i> Category</label>
-                                <select id="filter-category" onchange="window.loadTickets(1)">
+                                <select id="filter-category" onchange="window.loadTickets(1, true)">
                                     <option value="">All Categories</option>
                                     <option value="Technical Support">Technical Support</option>
                                     <option value="Billing & Payments">Billing & Payments</option>
@@ -176,7 +176,7 @@
                             </div>
                             <div class="filter-item">
                                 <label><i class="fas fa-info-circle"></i> Status</label>
-                                <select id="filter-status" onchange="window.loadTickets(1)">
+                                <select id="filter-status" onchange="window.loadTickets(1, true)">
                                     <option value="">All Statuses</option>
                                     <option value="OPEN">Open</option>
                                     <option value="IN_PROGRESS">In Progress</option>
@@ -188,7 +188,7 @@
                             <!-- Priority Filter -->
                             <div class="filter-item">
                                 <label><i class="fas fa-bolt"></i> Priority</label>
-                                <select id="filter-priority" onchange="window.loadTickets(1)">
+                                <select id="filter-priority" onchange="window.loadTickets(1, true)">
                                     <option value="">All Priorities</option>
                                     <option value="LOW">Low</option>
                                     <option value="MEDIUM">Medium</option>
@@ -199,7 +199,7 @@
                             <!-- Assignment Filter -->
                             <div class="filter-item" id="filter-assignment-group" style="display: none;">
                                 <label><i class="fas fa-user-tag"></i> Assignment</label>
-                                <select id="filter-assignment" onchange="window.loadTickets(1)">
+                                <select id="filter-assignment" onchange="window.loadTickets(1, true)">
                                     <option value="all">Everyone's</option>
                                     <option value="me" id="user-assigned-me">Assigned to Me</option>
                                     <option value="unassigned">Unassigned</option>

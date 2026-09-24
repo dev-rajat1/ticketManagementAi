@@ -32,8 +32,10 @@ window.initSidebar = function() {
     });
 };
 
-window.showSection = function(section) {
+window.showSection = function(section, forceRefresh = false) {
+    if (window.currentSection === section && !forceRefresh) return;
     window.currentSection = section;
+
     const sections = ['dashboard-section', 'staff-section', 'customers-section', 'performance-section'];
     sections.forEach(s => {
         const el = document.getElementById(s);
@@ -56,7 +58,6 @@ window.showSection = function(section) {
     // Update Search Placeholder
     const searchInput = document.getElementById('search-input');
     if (searchInput) {
-        searchInput.value = ''; // Clear search when switching sections
         if (section === 'dashboard') searchInput.placeholder = 'Search tickets...';
         else if (section === 'staff') searchInput.placeholder = 'Search staff...';
         else if (section === 'customers') searchInput.placeholder = 'Search customers...';
@@ -64,13 +65,72 @@ window.showSection = function(section) {
         else searchInput.placeholder = 'Search...';
     }
 
+    // STATE RETENTION: Keep already loaded data visible immediately!
+    // Never blow away loaded DOM with skeletons when switching back and forth!
     if (section === 'dashboard') { 
-        window.loadTickets(1); 
-        window.updateDashboardStatsSummary(); 
+        const ticketsBody = document.getElementById('tickets-body');
+        const hasTickets = ticketsBody && ticketsBody.children.length > 0 && !ticketsBody.querySelector('.skeleton-box');
+        const statsGrid = document.getElementById('stats-grid');
+        const hasStats = statsGrid && statsGrid.children.length > 0 && !statsGrid.querySelector('.skeleton-text');
+
+        if (!hasTickets || forceRefresh) {
+            window.loadTickets(window.currentPage || 1, forceRefresh);
+        }
+        if (!hasStats || forceRefresh) {
+            window.updateDashboardStatsSummary(forceRefresh);
+        }
+    } else if (section === 'staff') {
+        const staffBody = document.getElementById('staff-body');
+        const hasStaff = staffBody && staffBody.children.length > 0 && !staffBody.querySelector('.skeleton-box');
+        if (!hasStaff || forceRefresh) {
+            window.loadStaff(forceRefresh);
+        }
+    } else if (section === 'customers') {
+        const customersBody = document.getElementById('customers-body');
+        const hasCustomers = customersBody && customersBody.children.length > 0 && !customersBody.querySelector('.skeleton-box');
+        if (!hasCustomers || forceRefresh) {
+            window.loadCustomers(forceRefresh);
+        }
+    } else if (section === 'performance') {
+        const perfBody = document.getElementById('performance-body');
+        const hasPerf = perfBody && perfBody.children.length > 0 && !perfBody.querySelector('.skeleton-circle');
+        if (!hasPerf || forceRefresh) {
+            window.loadAgentPerformance(forceRefresh);
+        }
     }
-    if (section === 'staff') window.loadStaff();
-    if (section === 'customers') window.loadCustomers();
-    if (section === 'performance') window.loadAgentPerformance();
+};
+
+window.refreshCurrentSection = async function() {
+    const syncIcons = document.querySelectorAll('.fa-sync-alt');
+    syncIcons.forEach(icon => icon.classList.add('fa-spin'));
+
+    const sec = window.currentSection || 'dashboard';
+    try {
+        if (sec === 'dashboard') {
+            window.invalidateApiCache('/tickets');
+            window.invalidateApiCache('/dashboard');
+            await Promise.all([
+                window.loadTickets(window.currentPage || 1, true),
+                window.updateDashboardStatsSummary(true)
+            ]);
+        } else if (sec === 'staff') {
+            window.invalidateApiCache('/users');
+            await window.loadStaff(true);
+        } else if (sec === 'customers') {
+            window.invalidateApiCache('/users');
+            await window.loadCustomers(true);
+        } else if (sec === 'performance') {
+            window.invalidateApiCache('/dashboard/agent-performance');
+            await window.loadAgentPerformance(true);
+        }
+        if (window.showToast) window.showToast('Data refreshed');
+    } catch (e) {
+        console.error('Refresh error:', e);
+    } finally {
+        setTimeout(() => {
+            syncIcons.forEach(icon => icon.classList.remove('fa-spin'));
+        }, 400);
+    }
 };
 
 window.filterByStat = function(type, value) {
@@ -93,16 +153,17 @@ window.filterByStat = function(type, value) {
         }
     }
 
-    window.loadTickets(1);
+    window.loadTickets(1, true);
     
     const table = document.querySelector('.table-container');
     if (table) table.scrollIntoView({ behavior: 'smooth' });
 };
 
-window.updateDashboardStatsSummary = async function() {
+window.updateDashboardStatsSummary = async function(forceRefresh = false) {
     try {
         const statsGrid = document.getElementById('stats-grid');
-        if (statsGrid) {
+        // Only show skeleton placeholders if there are no existing stat cards rendered
+        if (statsGrid && (!statsGrid.children.length || statsGrid.querySelector('.skeleton-text'))) {
             statsGrid.innerHTML = `
                 <div class="stat-card clickable"><div class="stat-info"><h3>Loading...</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div></div>
                 <div class="stat-card clickable" style="border-bottom: 4px solid var(--primary);"><div class="stat-info"><h3>Open</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div></div>
@@ -112,7 +173,7 @@ window.updateDashboardStatsSummary = async function() {
             `;
         }
 
-        const res = await window.apiFetch('/dashboard/stats');
+        const res = await window.apiFetch('/dashboard/stats', { forceFresh: forceRefresh });
         const d = await res.json();
         if (d.success) {
             const s = d.data.tickets;
@@ -149,13 +210,14 @@ window.updateDashboardStatsSummary = async function() {
     } catch (e) {}
 };
 
-window.loadAgentPerformance = async function() {
+window.loadAgentPerformance = async function(forceRefresh = false) {
     try {
         const searchInput = document.getElementById('search-input');
-        const query = searchInput ? searchInput.value : '';
+        const query = (window.currentSection === 'performance' && searchInput) ? searchInput.value : '';
 
         const body = document.getElementById('performance-body');
-        if (body) {
+        // Only show skeleton placeholders if there are no existing rows rendered
+        if (body && (!body.children.length || body.querySelector('.skeleton-circle'))) {
             body.innerHTML = Array(3).fill(`
                 <tr>
                     <td><div style="display:flex; align-items:center; gap:12px;"><div class="skeleton-circle" style="width: 32px; height: 32px; border-radius: 50%;"></div><div class="skeleton-text" style="width: 120px;"></div></div></td>
@@ -171,10 +233,10 @@ window.loadAgentPerformance = async function() {
             `).join('');
         }
 
-        const res = await window.apiFetch(`/dashboard/agent-performance?search=${encodeURIComponent(query)}`);
+        const res = await window.apiFetch(`/dashboard/agent-performance?search=${encodeURIComponent(query)}`, { forceFresh: forceRefresh });
         const d = await res.json();
         if (body) {
-            body.innerHTML = d.data.map(a => `
+            body.innerHTML = (d.data || []).map(a => `
                 <tr>
                     <td data-label="Agent">
                         <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="window.viewAgentTickets('${a.id}', '${a.name}')">
@@ -194,7 +256,7 @@ window.loadAgentPerformance = async function() {
                         </div>
                     </td>
                 </tr>
-            `).join('');
+            `).join('') || '<tr><td colspan="4" style="text-align:center; padding: 2rem; color: var(--text-muted);">No agent records found.</td></tr>';
         }
     } catch (e) {}
 };

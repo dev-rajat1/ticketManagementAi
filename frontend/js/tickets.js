@@ -2,7 +2,7 @@
  * Tickets Management Logic
  */
 
-window.loadTickets = async function(page = 1) {
+window.loadTickets = async function(page = 1, forceRefresh = false) {
     window.currentPage = page;
     
     // Get values safely
@@ -16,7 +16,7 @@ window.loadTickets = async function(page = 1) {
     const priority = priorityEl ? priorityEl.value : '';
     const category = categoryEl ? categoryEl.value : '';
     const assignment = assignmentEl ? assignmentEl.value : 'all';
-    const search = searchEl ? searchEl.value : '';
+    const search = (window.currentSection === 'dashboard' && searchEl) ? searchEl.value : '';
 
     let endpoint = `/tickets?page=${page}`;
     if (search) endpoint += `&search=${encodeURIComponent(search)}`;
@@ -42,7 +42,8 @@ window.loadTickets = async function(page = 1) {
     }
 
     const body = document.getElementById('tickets-body');
-    if (body) {
+    // ONLY show skeleton placeholders if there are no existing rows rendered in the table!
+    if (body && (!body.children.length || body.querySelector('.skeleton-box'))) {
         body.innerHTML = Array(5).fill(`
             <tr>
                 <td><div class="skeleton-box" style="width: 20px; height: 20px;"></div></td>
@@ -58,7 +59,7 @@ window.loadTickets = async function(page = 1) {
     }
 
     try {
-        const res = await window.apiFetch(endpoint);
+        const res = await window.apiFetch(endpoint, { forceFresh: forceRefresh });
         const data = await res.json();
         if (data.success) {
             window.renderTicketsTable(data.data);
@@ -243,7 +244,8 @@ window.saveTicketChanges = async function() {
         window.showToast('Changes saved');
         window.tempChanges = {};
         window.openDetailModal(window.currentTicketId);
-        window.loadTickets(window.currentPage);
+        window.loadTickets(window.currentPage, true);
+        window.updateDashboardStatsSummary(true);
     } catch (e) {
         window.showToast('Save failed', 'error');
     }
@@ -474,8 +476,8 @@ window.submitCreateTicket = async function(e) {
         if (res.ok && result.success) {
             window.showToast('Ticket created successfully', 'success');
             window.closeCreateTicketModal();
-            window.loadTickets(1);
-            window.updateDashboardStatsSummary();
+            window.loadTickets(1, true);
+            window.updateDashboardStatsSummary(true);
         } else {
             window.showToast(result.message || 'Error creating ticket', 'error');
         }
@@ -562,7 +564,8 @@ window.deleteTicket = async function(id) {
     try {
         await window.apiFetch(`/tickets/${id}`, { method: 'DELETE' });
         window.showToast('Ticket deleted');
-        window.loadTickets(window.currentPage);
+        window.loadTickets(window.currentPage, true);
+        window.updateDashboardStatsSummary(true);
     } catch (e) { window.showToast('Delete failed', 'error'); }
 };
 
@@ -623,8 +626,8 @@ window.bulkDeleteTickets = async function() {
         });
         if (res.ok) {
             window.showToast('Tickets deleted');
-            window.loadTickets(window.currentPage);
-            window.updateDashboardStatsSummary();
+            window.loadTickets(window.currentPage, true);
+            window.updateDashboardStatsSummary(true);
         } else window.showToast('Bulk delete failed', 'error');
     } catch (e) { window.showToast('Error', 'error'); }
 };
@@ -727,8 +730,8 @@ window.submitAudioTicket = async function(e) {
 
     try {
         const token = localStorage.getItem('token');
-        const baseHost = (window.ENV_BACKEND_URL || 'https://ticketmanagementai.onrender.com').replace(/\/$/, '');
-        const res = await fetch(`${baseHost}/api/tickets/from-audio`, {
+        const apiUrl = window.API_URL || 'https://ticketmanagementai.onrender.com/api';
+        const res = await fetch(`${apiUrl}/tickets/from-audio`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -740,10 +743,12 @@ window.submitAudioTicket = async function(e) {
         if (data.success && data.data) {
             window.showToast('AI Ticket created successfully from recording!', 'success');
             window.closeAudioTicketModal();
-            window.loadTickets(1);
-            window.updateDashboardStatsSummary();
+            window.invalidateApiCache('/tickets');
+            window.invalidateApiCache('/dashboard');
+            window.loadTickets(1, true);
+            window.updateDashboardStatsSummary(true);
             setTimeout(() => {
-                window.openTicketDetail(data.data.id);
+                window.openDetailModal(data.data.id);
             }, 500);
         } else {
             window.showToast(data.message || 'Failed to create ticket from audio', 'error');

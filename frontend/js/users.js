@@ -2,15 +2,16 @@
  * User Management (Staff & Customers)
  */
 
-window.loadStaff = async function() {
+window.loadStaff = async function(forceRefresh = false) {
     try {
         const searchInput = document.getElementById('search-input');
-        const search = searchInput ? searchInput.value.toLowerCase() : '';
+        const search = (window.currentSection === 'staff' && searchInput) ? searchInput.value.toLowerCase() : '';
 
         const body = document.getElementById('staff-body');
-        if (body) {
+        // Only show skeleton placeholders if there are no existing rows rendered
+        if (body && (!body.children.length || body.querySelector('.skeleton-box'))) {
             body.innerHTML = Array(4).fill(`
-                <tr>
+                <tr class="skeleton-row">
                     <td data-label="Select"><div class="skeleton-box" style="width: 20px; height: 20px;"></div></td>
                     <td data-label="Name"><div class="skeleton-text" style="width: 120px;"></div></td>
                     <td data-label="Email"><div class="skeleton-text" style="width: 180px;"></div></td>
@@ -20,9 +21,9 @@ window.loadStaff = async function() {
             `).join('');
         }
 
-        const res = await window.apiFetch('/users');
+        const res = await window.apiFetch('/users?limit=100', { forceFresh: forceRefresh });
         const d = await res.json();
-        let staff = d.data.filter(u => u.role !== 'USER');
+        let staff = (d.data || []).filter(u => u.role !== 'USER');
         
         if (search) {
             staff = staff.filter(u => 
@@ -49,15 +50,16 @@ window.loadStaff = async function() {
     } catch (e) {}
 };
 
-window.loadCustomers = async function() {
+window.loadCustomers = async function(forceRefresh = false) {
     try {
         const searchInput = document.getElementById('search-input');
-        const search = searchInput ? searchInput.value.toLowerCase() : '';
+        const search = (window.currentSection === 'customers' && searchInput) ? searchInput.value.toLowerCase() : '';
 
         const body = document.getElementById('customers-body');
-        if (body) {
+        // Only show skeleton placeholders if there are no existing rows rendered
+        if (body && (!body.children.length || body.querySelector('.skeleton-box'))) {
             body.innerHTML = Array(4).fill(`
-                <tr>
+                <tr class="skeleton-row">
                     <td data-label="Select"><div class="skeleton-box" style="width: 20px; height: 20px;"></div></td>
                     <td data-label="Name"><div class="skeleton-text" style="width: 120px;"></div></td>
                     <td data-label="Email"><div class="skeleton-text" style="width: 180px;"></div></td>
@@ -67,9 +69,9 @@ window.loadCustomers = async function() {
             `).join('');
         }
 
-        const res = await window.apiFetch('/users');
+        const res = await window.apiFetch('/users?role=USER&limit=100', { forceFresh: forceRefresh });
         const d = await res.json();
-        let cust = d.data.filter(u => u.role === 'USER');
+        let cust = (d.data || []);
         
         if (search) {
             cust = cust.filter(u => 
@@ -173,7 +175,7 @@ window.submitUserForm = async function(e) {
         if (res.ok) {
             window.showToast('Saved');
             window.closeUserModal();
-            if (role === 'USER') window.loadCustomers(); else window.loadStaff();
+            if (role === 'USER') window.loadCustomers(true); else window.loadStaff(true);
         } else {
             const err = await res.json();
             window.showToast(err.message, 'error');
@@ -187,7 +189,7 @@ window.deleteUser = async function(id, type) {
         const res = await window.apiFetch(`/users/${id}`, { method: 'DELETE' });
         if (res.ok) {
             window.showToast('Deleted');
-            if (type === 'staff') window.loadStaff(); else window.loadCustomers();
+            if (type === 'staff') window.loadStaff(true); else window.loadCustomers(true);
         } else {
             const err = await res.json();
             window.showToast(err.message || 'Failed to delete', 'error');
@@ -207,7 +209,7 @@ window.bulkDeleteUsers = async function(type) {
         });
         if (res.ok) {
             window.showToast('Members deleted');
-            if (type === 'staff') window.loadStaff(); else window.loadCustomers();
+            if (type === 'staff') window.loadStaff(true); else window.loadCustomers(true);
         } else {
             const err = await res.json();
             window.showToast(err.message || 'Bulk delete failed', 'error');

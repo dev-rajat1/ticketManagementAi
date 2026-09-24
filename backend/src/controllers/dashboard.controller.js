@@ -213,30 +213,43 @@ export const getAgentPerformance = async (req, res, next) => {
       orderBy: { name: 'asc' }
     });
 
-    const agentStats = await Promise.all(
-      agents.map(async (agent) => {
-        const [resolved, open, inProgress] = await Promise.all([
-          prisma.ticket.count({ where: { assignedToId: agent.id, status: TICKET_STATUS.RESOLVED } }),
-          prisma.ticket.count({ where: { assignedToId: agent.id, status: TICKET_STATUS.OPEN } }),
-          prisma.ticket.count({ where: { assignedToId: agent.id, status: TICKET_STATUS.IN_PROGRESS } }),
-        ]);
+    const agentIds = agents.map(a => a.id);
+    const ticketCounts = agentIds.length > 0 ? await prisma.ticket.groupBy({
+      by: ['assignedToId', 'status'],
+      where: {
+        assignedToId: { in: agentIds },
+        status: { in: [TICKET_STATUS.RESOLVED, TICKET_STATUS.OPEN, TICKET_STATUS.IN_PROGRESS] }
+      },
+      _count: { id: true }
+    }) : [];
 
-        return {
-          id: agent.id,
-          name: agent.name,
-          email: agent.email,
-          avatarUrl: agent.avatarUrl,
-          totalAssigned: agent._count.assignedTickets,
-          resolved,
-          open,
-          inProgress,
-          resolutionRate:
-            agent._count.assignedTickets > 0
-              ? Math.round((resolved / agent._count.assignedTickets) * 100)
-              : 0,
-        };
-      })
-    );
+    const statsMap = {};
+    ticketCounts.forEach(tc => {
+      if (!statsMap[tc.assignedToId]) statsMap[tc.assignedToId] = {};
+      statsMap[tc.assignedToId][tc.status] = tc._count.id;
+    });
+
+    const agentStats = agents.map((agent) => {
+      const counts = statsMap[agent.id] || {};
+      const resolved = counts[TICKET_STATUS.RESOLVED] || 0;
+      const open = counts[TICKET_STATUS.OPEN] || 0;
+      const inProgress = counts[TICKET_STATUS.IN_PROGRESS] || 0;
+
+      return {
+        id: agent.id,
+        name: agent.name,
+        email: agent.email,
+        avatarUrl: agent.avatarUrl,
+        totalAssigned: agent._count.assignedTickets,
+        resolved,
+        open,
+        inProgress,
+        resolutionRate:
+          agent._count.assignedTickets > 0
+            ? Math.round((resolved / agent._count.assignedTickets) * 100)
+            : 0,
+      };
+    });
 
     return successResponse(res, 'Agent performance fetched', agentStats);
   } catch (error) {
