@@ -76,10 +76,13 @@ export const findAll = async (req, res, next) => {
 
     let finalAssignedToId = assignedToId;
 
-    // Enforce Agent isolation: If not admin and not explicitly filtering for unassigned, default to their own
+    // Agent assignment filtering:
+    // Defaults to agent's own tickets ('me' or empty), while allowing 'unassigned' ('null') and 'all' team tickets
     if (req.user.role === ROLES.AGENT) {
-      if (!assignedToId || assignedToId === 'all') {
+      if (!assignedToId || assignedToId === 'me') {
         finalAssignedToId = req.user.id;
+      } else if (assignedToId === 'all') {
+        finalAssignedToId = undefined;
       }
     }
 
@@ -141,14 +144,21 @@ export const update = async (req, res, next) => {
     const { role } = req.user;
     const updates = req.body;
 
-    if (updates.assignedToId && role !== ROLES.ADMIN) {
-      return errorResponse(res, 'Only Admin can assign tickets', 403);
+    if (updates.assignedToId !== undefined && role !== ROLES.ADMIN) {
+      // Allow agents to claim unassigned tickets or self-assign to themselves
+      const isAgentSelfClaim = role === ROLES.AGENT && 
+        updates.assignedToId === req.user.id && 
+        (!ticket.assignedToId || ticket.assignedToId === req.user.id);
+      
+      if (!isAgentSelfClaim) {
+        return errorResponse(res, 'Only Admin can assign tickets to other agents', 403);
+      }
     }
 
     if (role === ROLES.AGENT) {
-      const allowed = ['status'];
+      const allowed = ['status', 'assignedToId'];
       const invalid = Object.keys(updates).filter(f => !allowed.includes(f));
-      if (invalid.length > 0) return errorResponse(res, 'Agents can only update status', 403);
+      if (invalid.length > 0) return errorResponse(res, 'Agents can only update status or claim tickets', 403);
     }
 
     if (role === ROLES.USER) {

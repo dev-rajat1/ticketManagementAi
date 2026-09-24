@@ -137,6 +137,10 @@ const updateTicketValidation = [
     .optional()
     .isIn(TICKET_CATEGORIES)
     .withMessage(`Category must be one of: ${TICKET_CATEGORIES.join(', ')}`),
+  body('assignedToId')
+    .optional({ nullable: true })
+    .custom((val) => val === null || typeof val === 'string')
+    .withMessage('assignedToId must be a valid string or null'),
 ];
 
 const idParamValidation = [

@@ -50,6 +50,7 @@ window.loadTickets = async function(page = 1, forceRefresh = false) {
                 <td><div class="skeleton-badge" style="width: 60px;"></div></td>
                 <td><div class="skeleton-text" style="width: 80%; height: 20px;"></div></td>
                 <td><div class="skeleton-text" style="width: 100px;"></div></td>
+                <td><div class="skeleton-badge" style="width: 90px;"></div></td>
                 <td><div class="skeleton-badge" style="width: 70px;"></div></td>
                 <td><div class="skeleton-badge" style="width: 60px;"></div></td>
                 <td><div class="skeleton-text" style="width: 80px;"></div></td>
@@ -82,24 +83,35 @@ window.renderTicketsTable = function(tickets) {
     if (!body) return;
     
     if (!tickets || tickets.length === 0) {
-        body.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 3rem; color: var(--text-muted);">No tickets found matching your criteria.</td></tr>';
+        body.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 3rem; color: var(--text-muted);">No tickets found matching your criteria.</td></tr>';
         return;
     }
 
-    body.innerHTML = tickets.map(t => `
-        <tr class="priority-${(t.priority || 'medium').toLowerCase()} ticket-row" 
-            onclick="window.openDetailModal('${t.id}')" 
-            data-id="${t.id}">
-            <td data-label="Select"><input type="checkbox" class="ticket-checkbox" value="${t.id}" onclick="event.stopPropagation(); window.updateBulkActionsVisibility('tickets')"></td>
-            <td data-label="ID"><span class="ticket-id-badge-small">${t.ticketNumber}</span></td>
-            <td data-label="Subject"><div class="ticket-subject-cell"><strong>${t.subject}</strong></div></td>
-            <td data-label="Sender"><span class="sender-name">${t.createdBy?.name || 'Email User'}</span></td>
-            <td data-label="Status"><span class="badge status-${t.status}">${t.status}</span></td>
-            <td data-label="Priority"><span class="p-badge p-${t.priority}">${t.priority}</span></td>
-            <td data-label="Category"><span class="category-tag">${t.category || 'General'}</span></td>
-            <td data-label="Created"><small class="text-muted">${window.formatDate(t.createdAt)}</small></td>
-        </tr>
-    `).join('');
+    body.innerHTML = tickets.map(t => {
+        let assigneeHtml = '<span class="badge" style="background: rgba(239, 68, 68, 0.1); color: var(--danger); font-size: 0.74rem;"><i class="fas fa-exclamation-circle" style="margin-right:3px;"></i> Unassigned</span>';
+        if (t.assignedTo) {
+            const isMe = window.currentUser && t.assignedTo.id === window.currentUser.id;
+            assigneeHtml = `<span class="badge" style="background: ${isMe ? 'rgba(99, 102, 241, 0.15)' : 'rgba(107, 114, 128, 0.1)'}; color: ${isMe ? 'var(--primary)' : 'var(--text-secondary)'}; font-weight: ${isMe ? '800' : '600'}; font-size: 0.76rem;">
+                <i class="fas ${isMe ? 'fa-user-check' : 'fa-user-tie'}" style="margin-right: 4px;"></i>${isMe ? 'You' : t.assignedTo.name}
+            </span>`;
+        }
+
+        return `
+            <tr class="priority-${(t.priority || 'medium').toLowerCase()} ticket-row" 
+                onclick="window.openDetailModal('${t.id}')" 
+                data-id="${t.id}">
+                <td data-label="Select"><input type="checkbox" class="ticket-checkbox" value="${t.id}" onclick="event.stopPropagation(); window.updateBulkActionsVisibility('tickets')"></td>
+                <td data-label="ID"><span class="ticket-id-badge-small">${t.ticketNumber}</span></td>
+                <td data-label="Subject"><div class="ticket-subject-cell"><strong>${t.subject}</strong></div></td>
+                <td data-label="Sender"><span class="sender-name">${t.createdBy?.name || 'Email User'}</span></td>
+                <td data-label="Assignee">${assigneeHtml}</td>
+                <td data-label="Status"><span class="badge status-${t.status}">${t.status}</span></td>
+                <td data-label="Priority"><span class="p-badge p-${t.priority}">${t.priority}</span></td>
+                <td data-label="Category"><span class="category-tag">${t.category || 'General'}</span></td>
+                <td data-label="Created"><small class="text-muted">${window.formatDate(t.createdAt)}</small></td>
+            </tr>
+        `;
+    }).join('');
     
     const selectAll = document.getElementById('select-all-tickets');
     if (selectAll) selectAll.checked = false;
@@ -207,17 +219,55 @@ window.openDetailModal = async function(id) {
 
 
         const isStaff = window.currentUser.role !== 'USER';
+        const isAdmin = window.currentUser.role === 'ADMIN';
+        const isAgent = window.currentUser.role === 'AGENT';
+
         document.getElementById('admin-actions').style.display = isStaff ? 'block' : 'none';
         document.getElementById('btn-save-ticket').style.display = 'none';
         document.getElementById('btn-done-ticket').style.display = 'inline-block';
+
+        const claimBtn = document.getElementById('btn-claim-ticket');
+        const updateAssignee = document.getElementById('update-assignee');
 
         if (isStaff) {
             document.getElementById('update-status').value = t.status;
             document.getElementById('update-status').onchange = (e) => trackChange('status', e.target.value);
             
-            if (window.currentUser.role === 'ADMIN') {
-                await loadAgentsList(t.assignedToId);
-                document.getElementById('update-assignee').onchange = (e) => trackChange('assignedToId', e.target.value || null);
+            if (isAdmin) {
+                if (updateAssignee) {
+                    updateAssignee.disabled = false;
+                    await loadAgentsList(t.assignedToId);
+                    updateAssignee.onchange = (e) => trackChange('assignedToId', e.target.value || null);
+                }
+                if (claimBtn) {
+                    if (!t.assignedToId) {
+                        claimBtn.style.display = 'block';
+                        claimBtn.disabled = false;
+                        claimBtn.innerHTML = '<i class="fas fa-hand-paper" style="margin-right: 6px;"></i> Claim Ticket (Assign to Me)';
+                    } else {
+                        claimBtn.style.display = 'none';
+                    }
+                }
+            } else if (isAgent) {
+                if (updateAssignee) {
+                    updateAssignee.disabled = true;
+                    if (t.assignedToId === window.currentUser.id) {
+                        updateAssignee.innerHTML = `<option value="${t.assignedToId}">Assigned to You (${t.assignedTo?.name || 'Me'})</option>`;
+                    } else if (t.assignedTo) {
+                        updateAssignee.innerHTML = `<option value="${t.assignedToId}">${t.assignedTo.name}</option>`;
+                    } else {
+                        updateAssignee.innerHTML = '<option value="">Unassigned Queue</option>';
+                    }
+                }
+                if (claimBtn) {
+                    if (!t.assignedToId) {
+                        claimBtn.style.display = 'block';
+                        claimBtn.disabled = false;
+                        claimBtn.innerHTML = '<i class="fas fa-hand-paper" style="margin-right: 6px;"></i> Claim & Assign to Me';
+                    } else {
+                        claimBtn.style.display = 'none';
+                    }
+                }
             }
         }
 
@@ -235,6 +285,45 @@ function trackChange(field, value) {
     document.getElementById('btn-done-ticket').style.display = 'none';
 }
 
+window.claimCurrentTicket = async function() {
+    if (!window.currentTicketId || !window.currentUser) return;
+    const btn = document.getElementById('btn-claim-ticket');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 6px;"></i> Claiming...';
+    }
+
+    try {
+        const res = await window.apiFetch(`/tickets/${window.currentTicketId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ assignedToId: window.currentUser.id, status: 'IN_PROGRESS' })
+        });
+        const d = await res.json();
+        if (res.ok && d.success) {
+            window.showToast('Ticket assigned to you and moved to In Progress!', 'success');
+            if (window.invalidateApiCache) {
+                window.invalidateApiCache('/tickets');
+                window.invalidateApiCache('/dashboard');
+            }
+            await window.openDetailModal(window.currentTicketId);
+            window.loadTickets(window.currentPage || 1, true);
+            if (window.updateDashboardStatsSummary) window.updateDashboardStatsSummary(true);
+        } else {
+            window.showToast(d.message || 'Failed to claim ticket', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-hand-paper" style="margin-right: 6px;"></i> Claim & Assign to Me';
+            }
+        }
+    } catch (e) {
+        window.showToast('Network error while claiming ticket', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-hand-paper" style="margin-right: 6px;"></i> Claim & Assign to Me';
+        }
+    }
+};
+
 window.saveTicketChanges = async function() {
     try {
         await window.apiFetch(`/tickets/${window.currentTicketId}`, {
@@ -243,6 +332,10 @@ window.saveTicketChanges = async function() {
         });
         window.showToast('Changes saved');
         window.tempChanges = {};
+        if (window.invalidateApiCache) {
+            window.invalidateApiCache('/tickets');
+            window.invalidateApiCache('/dashboard');
+        }
         window.openDetailModal(window.currentTicketId);
         window.loadTickets(window.currentPage, true);
         window.updateDashboardStatsSummary(true);
@@ -476,6 +569,10 @@ window.submitCreateTicket = async function(e) {
         if (res.ok && result.success) {
             window.showToast('Ticket created successfully', 'success');
             window.closeCreateTicketModal();
+            if (window.invalidateApiCache) {
+                window.invalidateApiCache('/tickets');
+                window.invalidateApiCache('/dashboard');
+            }
             window.loadTickets(1, true);
             window.updateDashboardStatsSummary(true);
         } else {
@@ -564,6 +661,10 @@ window.deleteTicket = async function(id) {
     try {
         await window.apiFetch(`/tickets/${id}`, { method: 'DELETE' });
         window.showToast('Ticket deleted');
+        if (window.invalidateApiCache) {
+            window.invalidateApiCache('/tickets');
+            window.invalidateApiCache('/dashboard');
+        }
         window.loadTickets(window.currentPage, true);
         window.updateDashboardStatsSummary(true);
     } catch (e) { window.showToast('Delete failed', 'error'); }
@@ -626,6 +727,10 @@ window.bulkDeleteTickets = async function() {
         });
         if (res.ok) {
             window.showToast('Tickets deleted');
+            if (window.invalidateApiCache) {
+                window.invalidateApiCache('/tickets');
+                window.invalidateApiCache('/dashboard');
+            }
             window.loadTickets(window.currentPage, true);
             window.updateDashboardStatsSummary(true);
         } else window.showToast('Bulk delete failed', 'error');

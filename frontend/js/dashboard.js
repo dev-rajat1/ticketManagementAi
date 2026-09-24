@@ -140,7 +140,7 @@ window.filterByStat = function(type, value) {
 
     if (type === 'status') {
         if (statusSelect) statusSelect.value = value;
-        if (isAgent && assignmentSelect.value !== 'unassigned') {
+        if (isAgent && assignmentSelect && assignmentSelect.value !== 'unassigned' && assignmentSelect.value !== 'all') {
             assignmentSelect.value = 'me';
         }
     } else if (type === 'assignment') {
@@ -179,31 +179,94 @@ window.updateDashboardStatsSummary = async function(forceRefresh = false) {
             const s = d.data.tickets;
             const isAgent = window.currentUser && window.currentUser.role === 'AGENT';
 
-            let statsHTML = `
-                <div class="stat-card clickable" onclick="window.filterByStat('all')">
-                    <div class="stat-info">
-                        <h3>${isAgent ? 'My Tickets' : 'Total Tickets'}</h3>
-                        <p>${s.total}</p>
+            let statsHTML = '';
+            if (isAgent) {
+                // Agent-tailored Dashboard Cards
+                const myAssignedCount = (s.assignedToMe !== undefined) ? s.assignedToMe : (s.total || 0);
+                const myOpenCount = s.open || 0;
+                const myInProgressCount = s.inProgress || 0;
+                const myResolvedCount = s.resolved || 0;
+                const unassignedQueueCount = s.unassigned || 0;
+
+                statsHTML = `
+                    <div class="stat-card clickable" style="border-bottom: 4px solid var(--primary);" onclick="window.filterByStat('assignment', 'me')">
+                        <div class="stat-info">
+                            <span class="badge" style="background: rgba(99, 102, 241, 0.15); color: var(--primary); font-size: 0.72rem; margin-bottom: 4px; display: inline-block;">YOUR QUEUE</span>
+                            <h3 style="font-weight: 800;">Assigned to Me</h3>
+                            <p style="font-size: 1.85rem; font-weight: 900; color: var(--primary); margin: 3px 0;">${myAssignedCount}</p>
+                            <small style="color: var(--text-secondary); font-size: 0.76rem;">Active tickets assigned to you</small>
+                        </div>
+                        <i class="fas fa-user-check" style="color: var(--primary); font-size: 1.8rem; opacity: 0.85;"></i>
                     </div>
-                    <i class="fas fa-ticket-alt"></i>
-                </div>
-                <div class="stat-card clickable" style="border-bottom: 4px solid var(--primary);" onclick="window.filterByStat('status', 'OPEN')">
-                    <div class="stat-info"><h3>Open</h3><p>${s.open}</p></div>
-                    <i class="fas fa-envelope-open"></i>
-                </div>
-                <div class="stat-card clickable" style="border-bottom: 4px solid var(--warning);" onclick="window.filterByStat('status', 'IN_PROGRESS')">
-                    <div class="stat-info"><h3>In Progress</h3><p>${s.inProgress}</p></div>
-                    <i class="fas fa-spinner"></i>
-                </div>
-                <div class="stat-card clickable" style="border-bottom: 4px solid var(--success);" onclick="window.filterByStat('status', 'RESOLVED')">
-                    <div class="stat-info"><h3>Resolved</h3><p>${s.resolved}</p></div>
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="stat-card clickable" style="border-bottom: 4px solid var(--danger);" onclick="window.filterByStat('assignment', 'unassigned')">
-                    <div class="stat-info"><h3>Unassigned</h3><p>${s.unassigned || 0}</p></div>
-                    <i class="fas fa-user-slash"></i>
-                </div>
-            `;
+
+                    <div class="stat-card clickable" style="border-bottom: 4px solid #3b82f6;" onclick="window.filterByStat('status', 'OPEN')">
+                        <div class="stat-info">
+                            <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-size: 0.72rem; margin-bottom: 4px; display: inline-block;">NEEDS ACTION</span>
+                            <h3>My Open</h3>
+                            <p style="font-size: 1.85rem; font-weight: 900; margin: 3px 0;">${myOpenCount}</p>
+                            <small style="color: var(--text-secondary); font-size: 0.76rem;">Open requests awaiting response</small>
+                        </div>
+                        <i class="fas fa-envelope-open" style="color: #3b82f6; font-size: 1.8rem; opacity: 0.85;"></i>
+                    </div>
+
+                    <div class="stat-card clickable" style="border-bottom: 4px solid var(--warning);" onclick="window.filterByStat('status', 'IN_PROGRESS')">
+                        <div class="stat-info">
+                            <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: var(--warning); font-size: 0.72rem; margin-bottom: 4px; display: inline-block;">ACTIVE WORK</span>
+                            <h3>In Progress</h3>
+                            <p style="font-size: 1.85rem; font-weight: 900; margin: 3px 0;">${myInProgressCount}</p>
+                            <small style="color: var(--text-secondary); font-size: 0.76rem;">Tickets currently in progress</small>
+                        </div>
+                        <i class="fas fa-spinner" style="color: var(--warning); font-size: 1.8rem; opacity: 0.85;"></i>
+                    </div>
+
+                    <div class="stat-card clickable" style="border-bottom: 4px solid var(--success);" onclick="window.filterByStat('status', 'RESOLVED')">
+                        <div class="stat-info">
+                            <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: var(--success); font-size: 0.72rem; margin-bottom: 4px; display: inline-block;">COMPLETED</span>
+                            <h3>My Resolved</h3>
+                            <p style="font-size: 1.85rem; font-weight: 900; color: var(--success); margin: 3px 0;">${myResolvedCount}</p>
+                            <small style="color: var(--text-secondary); font-size: 0.76rem;">Successfully resolved tickets</small>
+                        </div>
+                        <i class="fas fa-check-circle" style="color: var(--success); font-size: 1.8rem; opacity: 0.85;"></i>
+                    </div>
+
+                    <div class="stat-card clickable" style="border-bottom: 4px solid var(--danger);" onclick="window.filterByStat('assignment', 'unassigned')">
+                        <div class="stat-info">
+                            <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: var(--danger); font-size: 0.72rem; margin-bottom: 4px; display: inline-block;">POOL</span>
+                            <h3>Unassigned</h3>
+                            <p style="font-size: 1.85rem; font-weight: 900; color: var(--danger); margin: 3px 0;">${unassignedQueueCount}</p>
+                            <small style="color: var(--text-secondary); font-size: 0.76rem;">Queue waiting to be claimed</small>
+                        </div>
+                        <i class="fas fa-inbox" style="color: var(--danger); font-size: 1.8rem; opacity: 0.85;"></i>
+                    </div>
+                `;
+            } else {
+                // Admin / Manager Stats Cards
+                statsHTML = `
+                    <div class="stat-card clickable" onclick="window.filterByStat('all')">
+                        <div class="stat-info">
+                            <h3>Total Tickets</h3>
+                            <p>${s.total}</p>
+                        </div>
+                        <i class="fas fa-ticket-alt"></i>
+                    </div>
+                    <div class="stat-card clickable" style="border-bottom: 4px solid var(--primary);" onclick="window.filterByStat('status', 'OPEN')">
+                        <div class="stat-info"><h3>Open</h3><p>${s.open}</p></div>
+                        <i class="fas fa-envelope-open"></i>
+                    </div>
+                    <div class="stat-card clickable" style="border-bottom: 4px solid var(--warning);" onclick="window.filterByStat('status', 'IN_PROGRESS')">
+                        <div class="stat-info"><h3>In Progress</h3><p>${s.inProgress}</p></div>
+                        <i class="fas fa-spinner"></i>
+                    </div>
+                    <div class="stat-card clickable" style="border-bottom: 4px solid var(--success);" onclick="window.filterByStat('status', 'RESOLVED')">
+                        <div class="stat-info"><h3>Resolved</h3><p>${s.resolved}</p></div>
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-card clickable" style="border-bottom: 4px solid var(--danger);" onclick="window.filterByStat('assignment', 'unassigned')">
+                        <div class="stat-info"><h3>Unassigned</h3><p>${s.unassigned || 0}</p></div>
+                        <i class="fas fa-user-slash"></i>
+                    </div>
+                `;
+            }
             
             if (statsGrid) statsGrid.innerHTML = statsHTML;
         }
@@ -220,6 +283,7 @@ window.loadAgentPerformance = async function(forceRefresh = false) {
         if (body && (!body.children.length || body.querySelector('.skeleton-circle'))) {
             body.innerHTML = Array(3).fill(`
                 <tr>
+                    <td style="text-align:center;"><div class="skeleton-badge" style="width: 30px; margin: 0 auto;"></div></td>
                     <td><div style="display:flex; align-items:center; gap:12px;"><div class="skeleton-circle" style="width: 32px; height: 32px; border-radius: 50%;"></div><div class="skeleton-text" style="width: 120px;"></div></div></td>
                     <td><div class="skeleton-badge" style="width: 50px;"></div></td>
                     <td><div class="skeleton-badge" style="width: 50px;"></div></td>
@@ -235,30 +299,101 @@ window.loadAgentPerformance = async function(forceRefresh = false) {
 
         const res = await window.apiFetch(`/dashboard/agent-performance?search=${encodeURIComponent(query)}`, { forceFresh: forceRefresh });
         const d = await res.json();
-        if (body) {
-            body.innerHTML = (d.data || []).map(a => `
-                <tr>
-                    <td data-label="Agent">
-                        <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="window.viewAgentTickets('${a.id}', '${a.name}')">
-                            <img src="${a.avatarUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(a.name) + '&background=random'}" style="width:32px; height:32px; border-radius:50%; box-shadow:var(--nm-convex-small);">
-                            <strong style="color:var(--primary);">${a.name}</strong>
-                            <i class="fas fa-external-link-alt" style="font-size:0.7rem; opacity:0.5;"></i>
-                        </div>
-                    </td>
-                    <td data-label="Assigned"><span class="badge" style="background: rgba(79, 70, 229, 0.1); color: var(--primary); box-shadow:none;">${a.totalAssigned}</span></td>
-                    <td data-label="Resolved"><span class="badge" style="background: rgba(34, 197, 94, 0.1); color: var(--success); box-shadow:none;">${a.resolved}</span></td>
-                    <td data-label="Resolution Rate">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <div style="flex:1; height:8px; background:rgba(0,0,0,0.05); border-radius:10px; overflow:hidden; box-shadow: inset 1px 1px 2px rgba(0,0,0,0.1);">
-                                <div style="width:${a.resolutionRate}%; height:100%; background:linear-gradient(90deg, var(--primary), var(--success));"></div>
+        
+        if (d.success) {
+            const perfData = d.data || {};
+            const agentsList = Array.isArray(perfData) ? perfData : (perfData.agents || []);
+            const myPerformance = perfData.myPerformance || (window.currentUser ? agentsList.find(a => a.id === window.currentUser.id) : null);
+            const isAgent = window.currentUser && window.currentUser.role === 'AGENT';
+
+            // Render Agent Spotlight Card at the top for Agents
+            const spotlightContainer = document.getElementById('agent-performance-spotlight');
+            if (spotlightContainer) {
+                if (isAgent && myPerformance) {
+                    spotlightContainer.style.display = 'block';
+                    spotlightContainer.innerHTML = `
+                        <div class="card-nm" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08)); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 16px; padding: 22px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                                <div style="display: flex; align-items: center; gap: 16px;">
+                                    <img src="${myPerformance.avatarUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(myPerformance.name) + '&background=6366f1&color=fff'}" style="width: 56px; height: 56px; border-radius: 50%; box-shadow: var(--nm-convex);">
+                                    <div>
+                                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                            <h3 style="margin: 0; font-weight: 900; font-size: 1.3rem;">${myPerformance.name}</h3>
+                                            <span class="badge" style="background: var(--primary); color: white; font-weight: 800; font-size: 0.72rem; padding: 3px 8px;">YOU</span>
+                                            <span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #d97706; font-weight: 800; font-size: 0.75rem;">
+                                                <i class="fas fa-trophy" style="margin-right: 4px;"></i>Team Rank #${myPerformance.rank || 1}
+                                            </span>
+                                        </div>
+                                        <p style="margin: 4px 0 0; color: var(--text-secondary); font-size: 0.85rem;">Your individual resolution efficiency & workload summary</p>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                    <div style="text-align: center; padding: 12px 18px; background: var(--bg-card); border-radius: 12px; box-shadow: var(--nm-convex-small); min-width: 100px;">
+                                        <small style="color: var(--text-secondary); display: block; font-weight: 700; font-size: 0.72rem;">ASSIGNED</small>
+                                        <strong style="font-size: 1.4rem; color: var(--primary); font-weight: 900;">${myPerformance.totalAssigned}</strong>
+                                    </div>
+                                    <div style="text-align: center; padding: 12px 18px; background: var(--bg-card); border-radius: 12px; box-shadow: var(--nm-convex-small); min-width: 100px;">
+                                        <small style="color: var(--text-secondary); display: block; font-weight: 700; font-size: 0.72rem;">RESOLVED</small>
+                                        <strong style="font-size: 1.4rem; color: var(--success); font-weight: 900;">${myPerformance.resolved}</strong>
+                                    </div>
+                                    <div style="text-align: center; padding: 12px 18px; background: var(--bg-card); border-radius: 12px; box-shadow: var(--nm-convex-small); min-width: 100px;">
+                                        <small style="color: var(--text-secondary); display: block; font-weight: 700; font-size: 0.72rem;">IN PROGRESS</small>
+                                        <strong style="font-size: 1.4rem; color: var(--warning); font-weight: 900;">${myPerformance.inProgress}</strong>
+                                    </div>
+                                    <div style="text-align: center; padding: 12px 18px; background: var(--bg-card); border-radius: 12px; box-shadow: var(--nm-convex-small); min-width: 110px;">
+                                        <small style="color: var(--text-secondary); display: block; font-weight: 700; font-size: 0.72rem;">RESOLUTION RATE</small>
+                                        <strong style="font-size: 1.4rem; color: var(--primary); font-weight: 900;">${myPerformance.resolutionRate}%</strong>
+                                    </div>
+                                </div>
                             </div>
-                            <span style="font-weight:800; font-size: 0.9rem;">${a.resolutionRate}%</span>
                         </div>
-                    </td>
-                </tr>
-            `).join('') || '<tr><td colspan="4" style="text-align:center; padding: 2rem; color: var(--text-muted);">No agent records found.</td></tr>';
+                    `;
+                } else {
+                    spotlightContainer.style.display = 'none';
+                }
+            }
+
+            // Render Table (Team Leaderboard)
+            if (body) {
+                body.innerHTML = agentsList.map((a, idx) => {
+                    const isCurrentUser = window.currentUser && a.id === window.currentUser.id;
+                    const rankNum = a.rank || (idx + 1);
+                    let rankBadge = `<span style="font-weight: 800; color: var(--text-muted); font-size: 0.9rem;">#${rankNum}</span>`;
+                    if (rankNum === 1) rankBadge = `<span style="color: #f59e0b; font-size: 1.15rem;" title="1st Place"><i class="fas fa-crown"></i> <strong>#1</strong></span>`;
+                    else if (rankNum === 2) rankBadge = `<span style="color: #94a3b8; font-size: 1.1rem;" title="2nd Place"><i class="fas fa-medal"></i> <strong>#2</strong></span>`;
+                    else if (rankNum === 3) rankBadge = `<span style="color: #d97706; font-size: 1.05rem;" title="3rd Place"><i class="fas fa-medal"></i> <strong>#3</strong></span>`;
+
+                    return `
+                        <tr style="${isCurrentUser ? 'background: rgba(99, 102, 241, 0.08); font-weight: 600;' : ''}">
+                            <td data-label="Rank" style="text-align: center;">${rankBadge}</td>
+                            <td data-label="Agent">
+                                <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="window.viewAgentTickets('${a.id}', '${a.name}')">
+                                    <img src="${a.avatarUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(a.name) + '&background=random'}" style="width:34px; height:34px; border-radius:50%; box-shadow:var(--nm-convex-small);">
+                                    <div>
+                                        <strong style="color:var(--primary); font-size: 0.95rem;">${a.name}</strong>
+                                        ${isCurrentUser ? '<span class="badge" style="background: var(--primary); color: white; font-size: 0.65rem; margin-left: 6px; padding: 2px 7px; border-radius: 6px;">YOU</span>' : ''}
+                                    </div>
+                                    <i class="fas fa-external-link-alt" style="font-size:0.7rem; opacity:0.5;"></i>
+                                </div>
+                            </td>
+                            <td data-label="Assigned"><span class="badge" style="background: rgba(79, 70, 229, 0.1); color: var(--primary); box-shadow:none; font-weight: 700;">${a.totalAssigned}</span></td>
+                            <td data-label="Resolved"><span class="badge" style="background: rgba(34, 197, 94, 0.1); color: var(--success); box-shadow:none; font-weight: 700;">${a.resolved}</span></td>
+                            <td data-label="Resolution Rate">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <div style="flex:1; height:8px; background:rgba(0,0,0,0.06); border-radius:10px; overflow:hidden; box-shadow: inset 1px 1px 2px rgba(0,0,0,0.1);">
+                                        <div style="width:${a.resolutionRate}%; height:100%; background:linear-gradient(90deg, var(--primary), var(--success));"></div>
+                                    </div>
+                                    <span style="font-weight:800; font-size: 0.9rem;">${a.resolutionRate}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('') || '<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--text-muted);">No agent records found.</td></tr>';
+            }
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error('Agent performance error:', e);
+    }
 };
 
 window.viewAgentTickets = function(agentId, agentName) {
@@ -286,26 +421,28 @@ window.renderProfileUI = function() {
     
     document.getElementById('nav-staff').style.display = isAdmin ? 'block' : 'none';
     document.getElementById('nav-customers').style.display = isAdmin ? 'block' : 'none';
-    document.getElementById('nav-performance').style.display = isAdmin ? 'block' : 'none';
+    // Performance section is visible to BOTH Admin and Agent!
+    document.getElementById('nav-performance').style.display = (isAdmin || isAgent) ? 'block' : 'none';
     
     const assignmentGroup = document.getElementById('filter-assignment-group');
     if (assignmentGroup) {
         assignmentGroup.style.display = isStaff ? 'flex' : 'none';
         
-        const optAssignedMe = document.getElementById('opt-assigned-me');
-        if (optAssignedMe) {
-            optAssignedMe.style.display = isAdmin ? 'none' : 'block';
-        }
-
-        const optAll = document.querySelector('#filter-assignment option[value="all"]');
-        if (optAll) {
-            optAll.style.display = isAgent ? 'none' : 'block';
-        }
-
-        if (isAgent) {
-            document.getElementById('filter-assignment').value = 'me';
-        } else {
-            document.getElementById('filter-assignment').value = 'all';
+        const assignmentSelect = document.getElementById('filter-assignment');
+        if (assignmentSelect) {
+            if (isAgent) {
+                assignmentSelect.innerHTML = `
+                    <option value="me" selected>Assigned to Me</option>
+                    <option value="unassigned">Unassigned Queue</option>
+                    <option value="all">All Team Tickets</option>
+                `;
+            } else if (isAdmin) {
+                assignmentSelect.innerHTML = `
+                    <option value="all" selected>All Tickets</option>
+                    <option value="unassigned">Unassigned</option>
+                    <option value="me">Assigned to Me</option>
+                `;
+            }
         }
     }
 
@@ -315,7 +452,24 @@ window.renderProfileUI = function() {
     }
 
     const roleBadge = document.getElementById('user-role-badge');
-    if (roleBadge) roleBadge.innerText = window.currentUser.role;
+    if (roleBadge) {
+        roleBadge.innerText = isAgent ? 'Support Agent' : window.currentUser.role;
+        roleBadge.style.background = isAgent ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.2)';
+        roleBadge.style.color = isAgent ? 'var(--primary)' : 'var(--success)';
+    }
+
+    // Agent workspace title personalization
+    const mainTitle = document.getElementById('dashboard-main-title');
+    const mainSubtitle = document.getElementById('dashboard-main-subtitle');
+    if (mainTitle && mainSubtitle) {
+        if (isAgent) {
+            mainTitle.innerHTML = `<i class="fas fa-headset" style="color: var(--primary); margin-right: 8px;"></i> Agent Workspace`;
+            mainSubtitle.innerText = `Welcome back, ${window.currentUser.name}! Here is your support ticket queue.`;
+        } else if (isAdmin) {
+            mainTitle.innerText = 'Ticket Explorer';
+            mainSubtitle.innerText = 'Manage and track all company requests';
+        }
+    }
 
     const createBtn = document.getElementById('btn-create-ticket-main');
     if (createBtn) createBtn.style.display = 'inline-flex';

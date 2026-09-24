@@ -137,8 +137,8 @@
                 <div class="table-container">
                     <div class="table-header-main">
                         <div class="title-group">
-                            <h2 style="font-weight: 900;">Ticket Explorer</h2>
-                            <p class="subtitle">Manage and track all customer requests</p>
+                            <h2 id="dashboard-main-title" style="font-weight: 900;">Ticket Explorer</h2>
+                            <p id="dashboard-main-subtitle" class="subtitle">Manage and track all customer requests</p>
                         </div>
                         <div class="action-group">
                             <button id="btn-create-ticket-main" class="btn btn-primary" onclick="window.openCreateTicketModal()">
@@ -200,9 +200,9 @@
                             <div class="filter-item" id="filter-assignment-group" style="display: none;">
                                 <label><i class="fas fa-user-tag"></i> Assignment</label>
                                 <select id="filter-assignment" onchange="window.loadTickets(1, true)">
-                                    <option value="all">Everyone's</option>
                                     <option value="me" id="user-assigned-me">Assigned to Me</option>
-                                    <option value="unassigned">Unassigned</option>
+                                    <option value="unassigned">Unassigned Queue</option>
+                                    <option value="all">All Team Tickets</option>
                                 </select>
                             </div>
                         </div>
@@ -216,6 +216,7 @@
                                     <th>ID</th>
                                     <th>Subject</th>
                                     <th>Sender</th>
+                                    <th>Assignee</th>
                                     <th>Status</th>
                                     <th>Priority</th>
                                     <th>Category</th>
@@ -242,16 +243,20 @@
 
             <!-- Performance Section -->
             <div id="performance-section" style="display: none;">
+                <!-- Agent Personal Spotlight (dynamically filled if role === 'AGENT') -->
+                <div id="agent-performance-spotlight" style="display: none; margin-bottom: 24px;"></div>
+
                 <div class="table-container">
                     <div class="table-header-main">
                         <div class="title-group">
-                            <h2>Agent Performance</h2>
+                            <h2 id="perf-heading">Agent Performance</h2>
+                            <p id="perf-subheading" class="subtitle">Track resolution metrics and support team efficiency</p>
                         </div>
                     </div>
                     <div class="overflow-x">
                         <table>
                             <thead>
-                                <tr><th>Agent</th><th>Assigned</th><th>Resolved</th><th>Resolution Rate</th></tr>
+                                <tr><th style="width: 70px; text-align: center;">Rank</th><th>Agent</th><th>Assigned</th><th>Resolved</th><th>Resolution Rate</th></tr>
                             </thead>
                             <tbody id="performance-body"></tbody>
                         </table>
@@ -478,7 +483,10 @@
                             <option value="RESOLVED">Resolved</option>
                             <option value="CLOSED">Closed</option>
                         </select></div>
-                        <div class="form-group"><label>Assigned To</label><select id="update-assignee" class="input-nm"></select></div>
+                        <div class="form-group" id="assignee-form-group"><label>Assigned To</label><select id="update-assignee" class="input-nm"></select></div>
+                        <button id="btn-claim-ticket" type="button" class="btn btn-primary" style="display:none; width:100%; margin-top: 10px; background: linear-gradient(135deg, var(--primary), #818cf8);" onclick="window.claimCurrentTicket()">
+                            <i class="fas fa-hand-paper" style="margin-right: 6px;"></i> Claim & Assign to Me
+                        </button>
                     </div>
                     <div class="card-nm" style="margin-top: 2rem; padding: 1.5rem;">
                         <div style="margin-bottom: 1rem;"><label class="label-tiny">REQUESTER</label><p id="d-creator" style="font-weight: 700;"></p></div>

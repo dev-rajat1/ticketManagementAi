@@ -50,13 +50,22 @@ export const getStats = async (req, res, next) => {
       _count: { id: true }
     }) : Promise.resolve(null);
 
+    const myUrgentPromise = (role === ROLES.AGENT) ? prisma.ticket.count({
+      where: {
+        assignedToId: userId,
+        priority: { in: ['HIGH', 'CRITICAL'] },
+        status: { notIn: [TICKET_STATUS.RESOLVED, TICKET_STATUS.CLOSED] }
+      }
+    }) : Promise.resolve(0);
+
     // Run EVERYTHING concurrently in a single roundtrip batch
-    const [statusGroups, total, resolvedTickets, agentStats, adminGroups] = await Promise.all([
+    const [statusGroups, total, resolvedTickets, agentStats, adminGroups, myUrgent] = await Promise.all([
       statusPromise,
       totalPromise,
       resolvedPromise,
       Promise.all(agentPromises),
-      adminPromise
+      adminPromise,
+      myUrgentPromise
     ]);
 
     const statusMap = {};
@@ -79,12 +88,13 @@ export const getStats = async (req, res, next) => {
       resolved,
       closed,
       closedTotal: resolved + closed,
+      myUrgent,
+      assignedToMe: (role === ROLES.AGENT) ? total : (agentStats[2] || 0),
     };
 
     if (role !== ROLES.USER && agentStats.length >= 4) {
       dashboardStats.assigned = agentStats[0];
       dashboardStats.unassigned = agentStats[1];
-      dashboardStats.assignedToMe = agentStats[2];
       dashboardStats.totalGlobal = agentStats[3];
     }
 
@@ -251,7 +261,21 @@ export const getAgentPerformance = async (req, res, next) => {
       };
     });
 
-    return successResponse(res, 'Agent performance fetched', agentStats);
+    // Sort leaderboard by resolved count and resolution rate descending
+    agentStats.sort((a, b) => (b.resolved - a.resolved) || (b.resolutionRate - a.resolutionRate));
+
+    // Assign leaderboard ranks
+    agentStats.forEach((agent, index) => {
+      agent.rank = index + 1;
+    });
+
+    const currentAgentStats = agentStats.find(a => a.id === req.user.id) || null;
+
+    return successResponse(res, 'Agent performance fetched', {
+      agents: agentStats,
+      myPerformance: currentAgentStats,
+      isAgent: req.user.role === ROLES.AGENT
+    });
   } catch (error) {
     next(error);
   }

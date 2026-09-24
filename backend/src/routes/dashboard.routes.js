@@ -23,7 +23,7 @@ router.get('/charts', dashboardController.getCharts);
  */
 router.get(
   '/agent-performance',
-  authorize('ADMIN'),
+  authorize('ADMIN', 'AGENT'),
   dashboardController.getAgentPerformance
 );
 
