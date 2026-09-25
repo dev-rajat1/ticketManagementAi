@@ -5,6 +5,7 @@
 window.logout = function() {
     localStorage.clear();
     sessionStorage.clear();
+    document.documentElement.classList.remove('is-logged-in');
     window.location.replace('/');
 };
 
@@ -35,8 +36,14 @@ window.handleLogin = async function(event) {
         
         if (d.success) {
             localStorage.setItem('token', d.data.accessToken);
+            document.documentElement.classList.add('is-logged-in');
+            window.currentSection = null;
             await window.initApp();
             window.showToast('Welcome Back!');
+            btn.disabled = false;
+            btnText.innerText = 'Sign In';
+            btnIcon.style.display = 'inline-block';
+            btnSpinner.style.display = 'none';
         } else {
             errorDiv.innerText = d.message || 'Incorrect email or password. Please try again.';
             errorDiv.style.display = 'block';

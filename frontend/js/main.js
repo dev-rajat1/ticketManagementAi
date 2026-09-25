@@ -21,7 +21,8 @@ window.initApp = async function() {
         if(data.success) {
             window.currentUser = data.data.user;
             window.renderProfileUI();
-            window.showSection('dashboard');
+            window.currentSection = null;
+            window.showSection('dashboard', true);
         } else { 
             window.logout(); 
         }

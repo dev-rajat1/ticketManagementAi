@@ -2,7 +2,7 @@
  * Dashboard & Navigation Logic
  */
 
-window.currentSection = 'dashboard';
+window.currentSection = null;
 
 // Sidebar Toggle Function (Mainly for Mobile now)
 window.toggleSidebar = function() {
@@ -162,14 +162,16 @@ window.filterByStat = function(type, value) {
 window.updateDashboardStatsSummary = async function(forceRefresh = false) {
     try {
         const statsGrid = document.getElementById('stats-grid');
+        const isAgent = window.currentUser && window.currentUser.role === 'AGENT';
+
         // Only show skeleton placeholders if there are no existing stat cards rendered
         if (statsGrid && (!statsGrid.children.length || statsGrid.querySelector('.skeleton-text'))) {
             statsGrid.innerHTML = `
-                <div class="stat-card clickable"><div class="stat-info"><h3>Loading...</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div></div>
-                <div class="stat-card clickable" style="border-bottom: 4px solid var(--primary);"><div class="stat-info"><h3>Open</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div></div>
-                <div class="stat-card clickable" style="border-bottom: 4px solid var(--warning);"><div class="stat-info"><h3>In Progress</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div></div>
-                <div class="stat-card clickable" style="border-bottom: 4px solid var(--success);"><div class="stat-info"><h3>Resolved</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div></div>
-                <div class="stat-card clickable" style="border-bottom: 4px solid var(--danger);"><div class="stat-info"><h3>Unassigned</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div></div>
+                <div class="stat-card clickable"><div class="stat-info"><h3>${isAgent ? 'Assigned to Me' : 'Total Tickets'}</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-ticket-alt"></i></div>
+                <div class="stat-card clickable" style="border-bottom: 4px solid var(--primary);"><div class="stat-info"><h3>Open</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-envelope-open"></i></div>
+                <div class="stat-card clickable" style="border-bottom: 4px solid var(--warning);"><div class="stat-info"><h3>In Progress</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-spinner"></i></div>
+                <div class="stat-card clickable" style="border-bottom: 4px solid var(--success);"><div class="stat-info"><h3>Resolved</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-check-circle"></i></div>
+                <div class="stat-card clickable" style="border-bottom: 4px solid var(--danger);"><div class="stat-info"><h3>Unassigned</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-user-slash"></i></div>
             `;
         }
 
@@ -177,66 +179,35 @@ window.updateDashboardStatsSummary = async function(forceRefresh = false) {
         const d = await res.json();
         if (d.success) {
             const s = d.data.tickets;
-            const isAgent = window.currentUser && window.currentUser.role === 'AGENT';
 
             let statsHTML = '';
             if (isAgent) {
-                // Agent-tailored Dashboard Cards
+                // Agent-tailored Dashboard Cards - EXACT same clean design structure as Admin
                 const myAssignedCount = (s.assignedToMe !== undefined) ? s.assignedToMe : (s.total || 0);
-                const myOpenCount = s.open || 0;
-                const myInProgressCount = s.inProgress || 0;
-                const myResolvedCount = s.resolved || 0;
-                const unassignedQueueCount = s.unassigned || 0;
 
                 statsHTML = `
-                    <div class="stat-card clickable" style="border-bottom: 4px solid var(--primary);" onclick="window.filterByStat('assignment', 'me')">
+                    <div class="stat-card clickable" onclick="window.filterByStat('assignment', 'me')">
                         <div class="stat-info">
-                            <span class="badge" style="background: rgba(99, 102, 241, 0.15); color: var(--primary); font-size: 0.72rem; margin-bottom: 4px; display: inline-block;">YOUR QUEUE</span>
-                            <h3 style="font-weight: 800;">Assigned to Me</h3>
-                            <p style="font-size: 1.85rem; font-weight: 900; color: var(--primary); margin: 3px 0;">${myAssignedCount}</p>
-                            <small style="color: var(--text-secondary); font-size: 0.76rem;">Active tickets assigned to you</small>
+                            <h3>Assigned to Me</h3>
+                            <p>${myAssignedCount}</p>
                         </div>
-                        <i class="fas fa-user-check" style="color: var(--primary); font-size: 1.8rem; opacity: 0.85;"></i>
+                        <i class="fas fa-ticket-alt"></i>
                     </div>
-
-                    <div class="stat-card clickable" style="border-bottom: 4px solid #3b82f6;" onclick="window.filterByStat('status', 'OPEN')">
-                        <div class="stat-info">
-                            <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-size: 0.72rem; margin-bottom: 4px; display: inline-block;">NEEDS ACTION</span>
-                            <h3>My Open</h3>
-                            <p style="font-size: 1.85rem; font-weight: 900; margin: 3px 0;">${myOpenCount}</p>
-                            <small style="color: var(--text-secondary); font-size: 0.76rem;">Open requests awaiting response</small>
-                        </div>
-                        <i class="fas fa-envelope-open" style="color: #3b82f6; font-size: 1.8rem; opacity: 0.85;"></i>
+                    <div class="stat-card clickable" style="border-bottom: 4px solid var(--primary);" onclick="window.filterByStat('status', 'OPEN')">
+                        <div class="stat-info"><h3>Open</h3><p>${s.open}</p></div>
+                        <i class="fas fa-envelope-open"></i>
                     </div>
-
                     <div class="stat-card clickable" style="border-bottom: 4px solid var(--warning);" onclick="window.filterByStat('status', 'IN_PROGRESS')">
-                        <div class="stat-info">
-                            <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: var(--warning); font-size: 0.72rem; margin-bottom: 4px; display: inline-block;">ACTIVE WORK</span>
-                            <h3>In Progress</h3>
-                            <p style="font-size: 1.85rem; font-weight: 900; margin: 3px 0;">${myInProgressCount}</p>
-                            <small style="color: var(--text-secondary); font-size: 0.76rem;">Tickets currently in progress</small>
-                        </div>
-                        <i class="fas fa-spinner" style="color: var(--warning); font-size: 1.8rem; opacity: 0.85;"></i>
+                        <div class="stat-info"><h3>In Progress</h3><p>${s.inProgress}</p></div>
+                        <i class="fas fa-spinner"></i>
                     </div>
-
                     <div class="stat-card clickable" style="border-bottom: 4px solid var(--success);" onclick="window.filterByStat('status', 'RESOLVED')">
-                        <div class="stat-info">
-                            <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: var(--success); font-size: 0.72rem; margin-bottom: 4px; display: inline-block;">COMPLETED</span>
-                            <h3>My Resolved</h3>
-                            <p style="font-size: 1.85rem; font-weight: 900; color: var(--success); margin: 3px 0;">${myResolvedCount}</p>
-                            <small style="color: var(--text-secondary); font-size: 0.76rem;">Successfully resolved tickets</small>
-                        </div>
-                        <i class="fas fa-check-circle" style="color: var(--success); font-size: 1.8rem; opacity: 0.85;"></i>
+                        <div class="stat-info"><h3>Resolved</h3><p>${s.resolved}</p></div>
+                        <i class="fas fa-check-circle"></i>
                     </div>
-
                     <div class="stat-card clickable" style="border-bottom: 4px solid var(--danger);" onclick="window.filterByStat('assignment', 'unassigned')">
-                        <div class="stat-info">
-                            <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: var(--danger); font-size: 0.72rem; margin-bottom: 4px; display: inline-block;">POOL</span>
-                            <h3>Unassigned</h3>
-                            <p style="font-size: 1.85rem; font-weight: 900; color: var(--danger); margin: 3px 0;">${unassignedQueueCount}</p>
-                            <small style="color: var(--text-secondary); font-size: 0.76rem;">Queue waiting to be claimed</small>
-                        </div>
-                        <i class="fas fa-inbox" style="color: var(--danger); font-size: 1.8rem; opacity: 0.85;"></i>
+                        <div class="stat-info"><h3>Unassigned</h3><p>${s.unassigned || 0}</p></div>
+                        <i class="fas fa-user-slash"></i>
                     </div>
                 `;
             } else {
@@ -398,7 +369,7 @@ window.loadAgentPerformance = async function(forceRefresh = false) {
 
 window.viewAgentTickets = function(agentId, agentName) {
     window.selectedAgentFilter = { id: agentId, name: agentName };
-    window.showSection('dashboard');
+    window.showSection('dashboard', true);
 };
 
 window.renderProfileUI = function() {

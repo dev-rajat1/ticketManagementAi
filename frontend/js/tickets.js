@@ -38,6 +38,7 @@ window.loadTickets = async function(page = 1, forceRefresh = false) {
         if (window.currentUser) {
             if (assignment === 'me') endpoint += `&assignedToId=${window.currentUser.id}`;
             else if (assignment === 'unassigned') endpoint += `&assignedToId=null`;
+            else if (assignment === 'all') endpoint += `&assignedToId=all`;
         }
     }
 
