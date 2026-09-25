@@ -36,6 +36,9 @@ window.handleLogin = async function(event) {
         
         if (d.success) {
             localStorage.setItem('token', d.data.accessToken);
+            if (d.data.refreshToken) {
+                localStorage.setItem('refreshToken', d.data.refreshToken);
+            }
             document.documentElement.classList.add('is-logged-in');
             window.currentSection = null;
             await window.initApp();

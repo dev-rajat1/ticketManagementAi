@@ -160,29 +160,39 @@ window.filterByStat = function(type, value) {
 };
 
 window.updateDashboardStatsSummary = async function(forceRefresh = false) {
-    try {
-        const statsGrid = document.getElementById('stats-grid');
-        const isAgent = window.currentUser && window.currentUser.role === 'AGENT';
+    const statsGrid = document.getElementById('stats-grid');
+    const isAgent = window.currentUser && window.currentUser.role === 'AGENT';
 
-        // Only show skeleton placeholders if there are no existing stat cards rendered
-        if (statsGrid && (!statsGrid.children.length || statsGrid.querySelector('.skeleton-text'))) {
-            statsGrid.innerHTML = `
-                <div class="stat-card clickable"><div class="stat-info"><h3>${isAgent ? 'Assigned to Me' : 'Total Tickets'}</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-ticket-alt"></i></div>
-                <div class="stat-card clickable" style="border-bottom: 4px solid var(--primary);"><div class="stat-info"><h3>Open</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-envelope-open"></i></div>
-                <div class="stat-card clickable" style="border-bottom: 4px solid var(--warning);"><div class="stat-info"><h3>In Progress</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-spinner"></i></div>
-                <div class="stat-card clickable" style="border-bottom: 4px solid var(--success);"><div class="stat-info"><h3>Resolved</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-check-circle"></i></div>
-                <div class="stat-card clickable" style="border-bottom: 4px solid var(--danger);"><div class="stat-info"><h3>Unassigned</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-user-slash"></i></div>
-            `;
+    // Only show skeleton placeholders if there are no existing stat cards rendered
+    if (statsGrid && (!statsGrid.children.length || statsGrid.querySelector('.skeleton-text'))) {
+        statsGrid.innerHTML = `
+            <div class="stat-card clickable"><div class="stat-info"><h3>${isAgent ? 'Assigned to Me' : 'Total Tickets'}</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-ticket-alt"></i></div>
+            <div class="stat-card clickable" style="border-bottom: 4px solid var(--primary);"><div class="stat-info"><h3>Open</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-envelope-open"></i></div>
+            <div class="stat-card clickable" style="border-bottom: 4px solid var(--warning);"><div class="stat-info"><h3>In Progress</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-spinner"></i></div>
+            <div class="stat-card clickable" style="border-bottom: 4px solid var(--success);"><div class="stat-info"><h3>Resolved</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-check-circle"></i></div>
+            <div class="stat-card clickable" style="border-bottom: 4px solid var(--danger);"><div class="stat-info"><h3>Unassigned</h3><div class="skeleton-text" style="width: 50px; height: 30px;"></div></div><i class="fas fa-user-slash"></i></div>
+        `;
+    }
+
+    try {
+        const res = await window.apiFetch('/dashboard/stats', { forceFresh: forceRefresh });
+
+        // If response is not ok (e.g. 401, 500), show error in stats
+        if (!res.ok) {
+            console.error('Dashboard stats API error:', res.status);
+            if (statsGrid && statsGrid.querySelector('.skeleton-text')) {
+                statsGrid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding: 1.5rem; color: var(--text-muted);"><i class="fas fa-exclamation-triangle" style="color:var(--warning); margin-right:8px;"></i>Could not load stats. <a href="#" onclick="window.updateDashboardStatsSummary(true)" style="color:var(--primary);">Retry</a></div>`;
+            }
+            return;
         }
 
-        const res = await window.apiFetch('/dashboard/stats', { forceFresh: forceRefresh });
         const d = await res.json();
         if (d.success) {
             const s = d.data.tickets;
 
             let statsHTML = '';
             if (isAgent) {
-                // Agent-tailored Dashboard Cards - EXACT same clean design structure as Admin
+                // Agent-tailored Dashboard Cards
                 const myAssignedCount = (s.assignedToMe !== undefined) ? s.assignedToMe : (s.total || 0);
 
                 statsHTML = `
@@ -240,8 +250,18 @@ window.updateDashboardStatsSummary = async function(forceRefresh = false) {
             }
             
             if (statsGrid) statsGrid.innerHTML = statsHTML;
+        } else {
+            console.error('Dashboard stats error:', d.message);
+            if (statsGrid && statsGrid.querySelector('.skeleton-text')) {
+                statsGrid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding: 1.5rem; color: var(--text-muted);"><i class="fas fa-exclamation-triangle" style="color:var(--warning); margin-right:8px;"></i>${d.message || 'Could not load stats.'} <a href="#" onclick="window.updateDashboardStatsSummary(true)" style="color:var(--primary);">Retry</a></div>`;
+            }
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error('Dashboard stats fetch error:', e);
+        if (statsGrid && statsGrid.querySelector('.skeleton-text')) {
+            statsGrid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding: 1.5rem; color: var(--text-muted);"><i class="fas fa-wifi" style="color:var(--danger); margin-right:8px;"></i>Network error. Check backend connection. <a href="#" onclick="window.updateDashboardStatsSummary(true)" style="color:var(--primary);">Retry</a></div>`;
+        }
+    }
 };
 
 window.loadAgentPerformance = async function(forceRefresh = false) {

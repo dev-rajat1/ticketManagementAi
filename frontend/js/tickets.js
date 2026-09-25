@@ -62,6 +62,14 @@ window.loadTickets = async function(page = 1, forceRefresh = false) {
 
     try {
         const res = await window.apiFetch(endpoint, { forceFresh: forceRefresh });
+        if (!res.ok) {
+            console.error('Tickets API error:', res.status);
+            const body = document.getElementById('tickets-body');
+            if (body) {
+                body.innerHTML = `<tr><td colspan="9" style="text-align:center; padding: 2rem; color: var(--text-muted);"><i class="fas fa-exclamation-triangle" style="color:var(--warning); margin-right:8px;"></i>Could not load tickets (HTTP ${res.status}). <a href="#" onclick="window.loadTickets(1, true)" style="color:var(--primary);">Retry</a></td></tr>`;
+            }
+            return;
+        }
         const data = await res.json();
         if (data.success) {
             window.renderTicketsTable(data.data);
