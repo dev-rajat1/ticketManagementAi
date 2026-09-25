@@ -153,7 +153,7 @@ class TicketService {
     if (category) where.AND.push({ category });
     if (createdById) where.AND.push({ createdById });
 
-    if (assignedToId !== undefined) {
+    if (assignedToId !== undefined && assignedToId !== 'all') {
       if (assignedToId === 'null' || assignedToId === '') {
         where.AND.push({ assignedToId: null });
       } else {

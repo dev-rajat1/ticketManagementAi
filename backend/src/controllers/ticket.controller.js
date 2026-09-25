@@ -86,6 +86,13 @@ export const findAll = async (req, res, next) => {
       }
     }
 
+    // Admin/Manager: 'all' means no filter (show all tickets)
+    if (req.user.role === ROLES.ADMIN || req.user.role === ROLES.MANAGER) {
+      if (!assignedToId || assignedToId === 'all') {
+        finalAssignedToId = undefined;
+      }
+    }
+
     const filters = {
       page: parseInt(page, 10) || 1,
       limit: parseInt(limit, 10) || 10,
