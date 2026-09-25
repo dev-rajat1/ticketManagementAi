@@ -1,4 +1,4 @@
-import { aiModel } from '../config/ai.js';
+import { aiModel, generateContentWithFallback } from '../config/ai.js';
 import prisma from '../config/database.js';
 import { TICKET_PRIORITY, SENTIMENTS } from '../utils/constants.js';
 
@@ -16,21 +16,17 @@ class AIService {
         return null;
       }
 
-      const result = await aiModel.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
+      const { text } = await generateContentWithFallback(
+        { contents: [{ role: 'user', parts: [{ text: prompt }] }] },
+        {
           temperature,
           topK: 40,
           topP: 0.95,
           maxOutputTokens: 1024,
-        },
-      });
+        }
+      );
 
-      const response = await result.response;
-      const text = response.text();
-      
-      if (!text) throw new Error("Empty response from AI");
-      return text.trim();
+      return text ? text.trim() : null;
     } catch (err) {
       console.error("❌ Gemini AI Error:", err.message);
       return null;
@@ -197,24 +193,35 @@ Sentiment:`;
         return this.#fallbackAudioTicket(filename, customerName);
       }
 
-      // Valid audio mimeTypes for Gemini: audio/mp3, audio/wav, audio/mpeg, audio/ogg, audio/m4a, etc.
-      let validMime = mimeType;
-      if (mimeType === 'audio/mp3') validMime = 'audio/mpeg';
+      // Determine proper mimeType for Gemini audio understanding
+      let validMime = mimeType || 'audio/mp3';
+      const lowerFilename = (filename || '').toLowerCase();
+      if (lowerFilename.endsWith('.wav')) validMime = 'audio/wav';
+      else if (lowerFilename.endsWith('.mp3')) validMime = 'audio/mp3';
+      else if (lowerFilename.endsWith('.m4a')) validMime = 'audio/x-m4a';
+      else if (lowerFilename.endsWith('.ogg')) validMime = 'audio/ogg';
+      else if (lowerFilename.endsWith('.webm')) validMime = 'audio/webm';
+      else if (validMime === 'audio/x-wav') validMime = 'audio/wav';
+      else if (validMime === 'audio/mpeg') validMime = 'audio/mpeg';
 
-      const prompt = `You are an expert customer support AI listening to a recorded customer call.
-${customerName ? `Note: The customer caller's name is "${customerName}".` : ''}
-Analyze the audio thoroughly, transcribe the dialogue accurately, and return ONLY a valid JSON object matching this schema:
+      const prompt = `You are an expert customer support AI listening to an audio recording of a customer or customer support call.
+${customerName ? `Note: The customer caller name is "${customerName}".` : ''}
+
+CRITICAL TASK:
+1. Listen to the audio recording very carefully.
+2. Understand the exact problem, complaint, request, or issue that the customer or speaker is describing.
+3. Extract and create a professional support ticket based DIRECTLY on what was spoken in the audio recording.
+4. If spoken in Hindi, Hinglish, or English, understand the full meaning accurately and generate a clean, professional support ticket.
+
+Return ONLY a valid JSON object matching this schema:
 {
-  "subject": "A concise 5 to 8 word descriptive title of the customer issue",
-  "description": "Comprehensive explanation of what the customer called about, issues experienced, and any requested action",
-  "transcript": "Accurate dialogue transcript formatted as [Customer]: ... [Agent]: ...",
+  "subject": "Clear, specific 5-10 word title describing the actual issue spoken in the audio (e.g. Payment deducted but subscription not active, Unable to log in to dashboard, Database connection timeout)",
+  "description": "Comprehensive explanation of what the customer spoke about in the call, including their exact problem, symptoms, error codes or transaction IDs mentioned, impact, and any requested action",
+  "transcript": "Accurate, detailed transcript of what was spoken in the audio. If it is a dialogue, format as [Customer]: ... [Agent]: ...; otherwise transcribe the speaker statement verbatim.",
   "priority": "LOW" or "MEDIUM" or "HIGH" or "CRITICAL",
   "category": "Technical Support" or "Billing & Payments" or "Account & Access" or "Feature Request" or "Bug Report" or "General Inquiry",
   "sentiment": "positive" or "neutral" or "frustrated" or "angry"
-}
-
-Respond ONLY with raw JSON. Do not include markdown code block backticks.`;
-
+}`;
 
       const audioPart = {
         inlineData: {
@@ -223,23 +230,32 @@ Respond ONLY with raw JSON. Do not include markdown code block backticks.`;
         },
       };
 
-      const result = await aiModel.generateContent([
-        audioPart,
-        { text: prompt }
-      ]);
+      const { text, modelUsed } = await generateContentWithFallback(
+        [audioPart, { text: prompt }],
+        {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+        }
+      );
 
-      const response = await result.response;
-      let text = response.text();
+      console.log(`🎙️ Gemini audio processed successfully using model [${modelUsed}]`);
+
       if (!text) throw new Error("Empty response from AI for audio recording");
 
-      // Strip code fences if present
-      text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      // Strip markdown code block backticks if present
+      const cleanJson = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
 
-      const parsed = JSON.parse(text);
       return {
-        subject: parsed.subject || `Call Recording Ticket (${filename})`,
-        description: parsed.description || 'Call recording analyzed by SmartSupport AI.',
-        transcript: parsed.transcript || 'Audio call processed successfully.',
+        subject: parsed.subject && parsed.subject.trim() 
+          ? parsed.subject.trim() 
+          : `Call Recording Ticket (${filename})`,
+        description: parsed.description && parsed.description.trim() 
+          ? parsed.description.trim() 
+          : (parsed.transcript || 'Audio call processed successfully.'),
+        transcript: parsed.transcript && parsed.transcript.trim() 
+          ? parsed.transcript.trim() 
+          : 'Audio call processed successfully.',
         priority: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(parsed.priority?.toUpperCase())
           ? parsed.priority.toUpperCase()
           : 'MEDIUM',
@@ -248,11 +264,11 @@ Respond ONLY with raw JSON. Do not include markdown code block backticks.`;
       };
     } catch (err) {
       console.error("❌ Gemini Audio Processing Error:", err.message);
-      return this.#fallbackAudioTicket(filename);
+      return this.#fallbackAudioTicket(filename, customerName);
     }
   }
 
-  #fallbackAudioTicket(filename) {
+  #fallbackAudioTicket(filename, customerName = '') {
     const cleanName = filename.replace(/[-_]/g, ' ').replace(/\.[^/.]+$/, '');
     return {
       subject: `Call Recording Ticket - ${cleanName}`,
