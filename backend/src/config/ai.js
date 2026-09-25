@@ -11,5 +11,5 @@ if (!apiKey) {
 const genAI = new GoogleGenerativeAI(apiKey || '');
 
 // Initialize the AI Model (gemini-1.5-flash is fast, reliable, and available on free tier)
-const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const modelName = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 export const aiModel = genAI.getGenerativeModel({ model: modelName });

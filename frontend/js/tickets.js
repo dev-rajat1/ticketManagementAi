@@ -334,22 +334,44 @@ window.claimCurrentTicket = async function() {
 };
 
 window.saveTicketChanges = async function() {
+    const saveBtn = document.getElementById('btn-save-ticket');
+    const doneBtn = document.getElementById('btn-done-ticket');
+    
+    // Show loading state on Apply button
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="margin-right: 8px;"></i>Saving...';
+    }
+    
     try {
-        await window.apiFetch(`/tickets/${window.currentTicketId}`, {
+        const res = await window.apiFetch(`/tickets/${window.currentTicketId}`, {
             method: 'PUT',
             body: JSON.stringify(window.tempChanges)
         });
-        window.showToast('Changes saved');
-        window.tempChanges = {};
-        if (window.invalidateApiCache) {
-            window.invalidateApiCache('/tickets');
-            window.invalidateApiCache('/dashboard');
+        const result = await res.json();
+        if (res.ok && result.success) {
+            window.showToast('Changes saved successfully', 'success');
+            window.tempChanges = {};
+            if (window.invalidateApiCache) {
+                window.invalidateApiCache('/tickets');
+                window.invalidateApiCache('/dashboard');
+            }
+            window.openDetailModal(window.currentTicketId);
+            window.loadTickets(window.currentPage, true);
+            window.updateDashboardStatsSummary(true);
+        } else {
+            window.showToast(result.message || 'Save failed', 'error');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = 'Apply Changes';
+            }
         }
-        window.openDetailModal(window.currentTicketId);
-        window.loadTickets(window.currentPage, true);
-        window.updateDashboardStatsSummary(true);
     } catch (e) {
-        window.showToast('Save failed', 'error');
+        window.showToast('Save failed. Please retry.', 'error');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = 'Apply Changes';
+        }
     }
 };
 
@@ -443,12 +465,27 @@ let cachedCustomersList = [];
 let isCustomCustomerMode = false;
 
 window.openCreateTicketModal = async function() {
+    // Show modal immediately with loading skeleton
+    document.getElementById('create-ticket-modal').style.display = 'flex';
+    
+    const submitBtn = document.querySelector('#create-ticket-form button[type="submit"]');
+    const customerSelect = document.getElementById('t-customer');
+    const assigneeSelect = document.getElementById('t-assignee');
+    
+    // Show loading placeholder in selects
+    if (customerSelect) customerSelect.innerHTML = '<option>Loading customers...</option>';
+    if (assigneeSelect) assigneeSelect.innerHTML = '<option>Loading agents...</option>';
+    if (submitBtn) submitBtn.disabled = true;
+    
     try {
-        const custRes = await window.apiFetch('/users?role=USER');
+        const [custRes, agentRes] = await Promise.all([
+            window.apiFetch('/users?role=USER'),
+            window.apiFetch('/users?role=AGENT')
+        ]);
         const custData = await custRes.json();
+        const agentData = await agentRes.json();
         cachedCustomersList = (custData && custData.data) || [];
         
-        const customerSelect = document.getElementById('t-customer');
         if (customerSelect) {
             if (cachedCustomersList.length > 0) {
                 customerSelect.innerHTML = cachedCustomersList.map(c => `<option value="${c.id}">${c.name} (${c.email})</option>`).join('');
@@ -457,9 +494,6 @@ window.openCreateTicketModal = async function() {
             }
         }
 
-        const agentRes = await window.apiFetch('/users?role=AGENT');
-        const agentData = await agentRes.json();
-        const assigneeSelect = document.getElementById('t-assignee');
         if (assigneeSelect) {
             assigneeSelect.innerHTML = '<option value="">-- Unassigned --</option>' + ((agentData && agentData.data) || []).map(a => `<option value="${a.id}">${a.name}</option>`).join('');
         }
@@ -474,11 +508,11 @@ window.openCreateTicketModal = async function() {
         if (selectMode) selectMode.style.display = 'block';
         if (customMode) customMode.style.display = 'none';
         if (btnToggle) btnToggle.innerHTML = '<i class="fas fa-edit"></i> Type Custom Email / Edit';
-
-        document.getElementById('create-ticket-modal').style.display = 'flex';
+        if (submitBtn) submitBtn.disabled = false;
     } catch (e) {
         console.error('Failed to load users:', e);
         window.showToast('Failed to load users', 'error');
+        if (submitBtn) submitBtn.disabled = false;
     }
 };
 
@@ -569,6 +603,15 @@ window.submitCreateTicket = async function(e) {
         }
     }
 
+    // Show loading state on submit button
+    const submitBtn = document.querySelector('#create-ticket-form button[type="submit"]');
+    const cancelBtn = document.querySelector('#create-ticket-form button[type="button"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="margin-right: 8px;"></i>Creating Ticket...';
+    }
+    if (cancelBtn) cancelBtn.disabled = true;
+
     try {
         const res = await window.apiFetch('/tickets', {
             method: 'POST',
@@ -586,10 +629,20 @@ window.submitCreateTicket = async function(e) {
             window.updateDashboardStatsSummary(true);
         } else {
             window.showToast(result.message || 'Error creating ticket', 'error');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Create Ticket';
+            }
+            if (cancelBtn) cancelBtn.disabled = false;
         }
     } catch (err) {
         console.error('Error creating ticket:', err);
         window.showToast('Error creating ticket', 'error');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Create Ticket';
+        }
+        if (cancelBtn) cancelBtn.disabled = false;
     }
 };
 
@@ -828,11 +881,17 @@ window.submitAudioTicket = async function(e) {
     const btnText = document.getElementById('btn-audio-submit-text');
     const btnSpinner = document.getElementById('btn-audio-submit-spinner');
     const procState = document.getElementById('audio-processing-state');
+    const cancelBtn = document.querySelector('#audio-ticket-form ~ div button, .modal-actions-alt button[type="button"]') || document.querySelector('#audio-ticket-modal .btn-secondary');
+    const procHeading = procState ? procState.querySelector('h4') : null;
+    const procSubtext = procState ? procState.querySelector('p') : null;
 
     if (submitBtn) submitBtn.disabled = true;
-    if (btnText) btnText.innerText = 'AI Listening & Transcribing...';
+    if (cancelBtn) cancelBtn.disabled = true;
+    if (btnText) btnText.innerText = 'AI Listening...';
     if (btnSpinner) btnSpinner.style.display = 'inline-block';
     if (procState) procState.style.display = 'block';
+    if (procHeading) procHeading.innerText = 'AI is Transcribing Call Recording...';
+    if (procSubtext) procSubtext.innerText = 'Analyzing dialogue, extracting issue details & predicting priority. This may take 15-30 seconds.';
 
     const formData = new FormData();
     formData.append('audio', selectedAudioFile);
@@ -842,9 +901,23 @@ window.submitAudioTicket = async function(e) {
     if (custName) formData.append('customerName', custName);
     if (custEmail) formData.append('customerEmail', custEmail);
 
+    // Animate processing text steps
+    const processingSteps = [
+        { h: 'AI is Transcribing Call Recording...', p: 'Converting speech to text and analyzing dialogue...' },
+        { h: 'Extracting Issue Details...', p: 'Understanding customer problem, urgency & category...' },
+        { h: 'Generating Professional Ticket...', p: 'Creating subject, description & priority from the call...' },
+        { h: 'Finalizing Ticket...', p: 'Saving audio attachment and creating support ticket...' }
+    ];
+    let stepIdx = 0;
+    const stepInterval = setInterval(() => {
+        stepIdx = (stepIdx + 1) % processingSteps.length;
+        if (procHeading) procHeading.innerText = processingSteps[stepIdx].h;
+        if (procSubtext) procSubtext.innerText = processingSteps[stepIdx].p;
+    }, 4000);
+
     try {
         const token = localStorage.getItem('token');
-        const apiUrl = window.API_URL || 'https://ticketmanagementai.onrender.com/api';
+        const apiUrl = window.API_URL || (window.ENV_BACKEND_URL ? window.ENV_BACKEND_URL + '/api' : 'https://ticketmanagementai.onrender.com/api');
         const res = await fetch(`${apiUrl}/tickets/from-audio`, {
             method: 'POST',
             headers: {
@@ -853,23 +926,36 @@ window.submitAudioTicket = async function(e) {
             body: formData
         });
 
+        clearInterval(stepInterval);
         const data = await res.json();
         if (data.success && data.data) {
+            if (procHeading) procHeading.innerText = '✅ Ticket Created Successfully!';
+            if (procSubtext) procSubtext.innerText = `Subject: "${data.data.subject}" — Opening ticket now...`;
+            if (btnText) btnText.innerText = 'Done!';
+            
+            await new Promise(r => setTimeout(r, 1200));
+            
             window.showToast('AI Ticket created successfully from recording!', 'success');
             window.closeAudioTicketModal();
-            window.invalidateApiCache('/tickets');
-            window.invalidateApiCache('/dashboard');
+            if (window.invalidateApiCache) {
+                window.invalidateApiCache('/tickets');
+                window.invalidateApiCache('/dashboard');
+            }
             window.loadTickets(1, true);
             window.updateDashboardStatsSummary(true);
             setTimeout(() => {
                 window.openDetailModal(data.data.id);
             }, 500);
         } else {
+            clearInterval(stepInterval);
             window.showToast(data.message || 'Failed to create ticket from audio', 'error');
+            if (cancelBtn) cancelBtn.disabled = false;
         }
     } catch (err) {
+        clearInterval(stepInterval);
         console.error('Audio ticket submission error:', err);
         window.showToast('Network error while processing audio recording', 'error');
+        if (cancelBtn) cancelBtn.disabled = false;
     } finally {
         if (submitBtn) submitBtn.disabled = false;
         if (btnText) btnText.innerHTML = '<i class="fas fa-magic"></i> Generate Ticket';
