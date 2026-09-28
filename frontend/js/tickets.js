@@ -2,9 +2,9 @@
  * Tickets Management Logic
  */
 
-window.loadTickets = async function(page = 1, forceRefresh = false) {
+window.loadTickets = async function (page = 1, forceRefresh = false) {
     window.currentPage = page;
-    
+
     // Get values safely
     const statusEl = document.getElementById('filter-status');
     const priorityEl = document.getElementById('filter-priority');
@@ -27,7 +27,7 @@ window.loadTickets = async function(page = 1, forceRefresh = false) {
     // Handle Agent Specific Filter from Performance Dashboard
     if (window.selectedAgentFilter && window.selectedAgentFilter.id) {
         endpoint += `&assignedToId=${window.selectedAgentFilter.id}`;
-        
+
         // Show Agent filter badge in UI
         const clearBtn = document.getElementById('btn-clear-tickets');
         if (clearBtn) {
@@ -87,10 +87,10 @@ window.loadTickets = async function(page = 1, forceRefresh = false) {
     }
 };
 
-window.renderTicketsTable = function(tickets) {
+window.renderTicketsTable = function (tickets) {
     const body = document.getElementById('tickets-body');
     if (!body) return;
-    
+
     if (!tickets || tickets.length === 0) {
         body.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 3rem; color: var(--text-muted);">No tickets found matching your criteria.</td></tr>';
         return;
@@ -121,13 +121,13 @@ window.renderTicketsTable = function(tickets) {
             </tr>
         `;
     }).join('');
-    
+
     const selectAll = document.getElementById('select-all-tickets');
     if (selectAll) selectAll.checked = false;
     window.updateBulkActionsVisibility('tickets');
 };
 
-window.clearSelection = function(type) {
+window.clearSelection = function (type) {
     if (type === 'tickets' && window.selectedAgentFilter) {
         window.selectedAgentFilter = null;
         const clearBtn = document.getElementById('btn-clear-tickets');
@@ -142,7 +142,7 @@ window.clearSelection = function(type) {
 
     const selectAllCheckbox = document.getElementById(`select-all-${type}`);
     if (selectAllCheckbox) selectAllCheckbox.checked = false;
-    
+
     const className = type === 'tickets' ? 'ticket-checkbox' : (type === 'staff' ? 'staff-checkbox' : 'customer-checkbox');
     const checkboxes = document.querySelectorAll(`.${className}`);
     checkboxes.forEach(cb => {
@@ -154,14 +154,14 @@ window.clearSelection = function(type) {
     window.updateBulkActionsVisibility(type);
 };
 
-window.changePage = function(delta) {
+window.changePage = function (delta) {
     const newPage = (window.currentPage || 1) + delta;
     if (newPage >= 1 && newPage <= (window.totalPages || 1)) {
         window.loadTickets(newPage);
     }
 };
 
-window.openDetailModal = async function(id) {
+window.openDetailModal = async function (id) {
     window.currentTicketId = id;
     window.tempChanges = {};
 
@@ -194,8 +194,8 @@ window.openDetailModal = async function(id) {
         const callRecBox = document.getElementById('call-recording-box');
         const callRecPlayer = document.getElementById('call-recording-player');
         if (callRecBox && callRecPlayer) {
-            const audioAtt = t.attachments?.find(att => 
-                (att.mimeType && att.mimeType.startsWith('audio/')) || 
+            const audioAtt = t.attachments?.find(att =>
+                (att.mimeType && att.mimeType.startsWith('audio/')) ||
                 /\.(mp3|wav|m4a|ogg|webm|aac|flac)$/i.test(att.filename || '')
             );
             if (audioAtt) {
@@ -217,13 +217,13 @@ window.openDetailModal = async function(id) {
             document.getElementById('d-ai-summary').innerText = 'Click "Generate Analysis" to create an AI-powered summary and extract sentiment.';
             document.getElementById('btn-ai-summary-text').innerText = 'Generate Analysis';
         }
-        
+
         document.getElementById('d-ai-sentiment').innerText = t.aiSentiment || 'Analyzing...';
-        
+
         const sentimentEl = document.getElementById('d-ai-sentiment');
         sentimentEl.className = 'badge';
-        if(t.aiSentiment === 'NEGATIVE' || t.aiSentiment === 'frustrated' || t.aiSentiment === 'angry') sentimentEl.classList.add('status-CLOSED'); 
-        else if(t.aiSentiment === 'POSITIVE' || t.aiSentiment === 'positive') sentimentEl.classList.add('status-RESOLVED');
+        if (t.aiSentiment === 'NEGATIVE' || t.aiSentiment === 'frustrated' || t.aiSentiment === 'angry') sentimentEl.classList.add('status-CLOSED');
+        else if (t.aiSentiment === 'POSITIVE' || t.aiSentiment === 'positive') sentimentEl.classList.add('status-RESOLVED');
         else sentimentEl.classList.add('status-IN_PROGRESS');
 
 
@@ -241,7 +241,7 @@ window.openDetailModal = async function(id) {
         if (isStaff) {
             document.getElementById('update-status').value = t.status;
             document.getElementById('update-status').onchange = (e) => trackChange('status', e.target.value);
-            
+
             if (isAdmin) {
                 if (updateAssignee) {
                     updateAssignee.disabled = false;
@@ -250,9 +250,9 @@ window.openDetailModal = async function(id) {
                 }
                 if (claimBtn) {
                     if (!t.assignedToId) {
-                        claimBtn.style.display = 'block';
+                        claimBtn.style.display = 'inline-flex';
                         claimBtn.disabled = false;
-                        claimBtn.innerHTML = '<i class="fas fa-hand-paper" style="margin-right: 6px;"></i> Claim Ticket (Assign to Me)';
+                        claimBtn.innerHTML = '<i class="fas fa-user-check"></i> <span>Claim & Assign to Me</span>';
                     } else {
                         claimBtn.style.display = 'none';
                     }
@@ -270,9 +270,9 @@ window.openDetailModal = async function(id) {
                 }
                 if (claimBtn) {
                     if (!t.assignedToId) {
-                        claimBtn.style.display = 'block';
+                        claimBtn.style.display = 'inline-flex';
                         claimBtn.disabled = false;
-                        claimBtn.innerHTML = '<i class="fas fa-hand-paper" style="margin-right: 6px;"></i> Claim & Assign to Me';
+                        claimBtn.innerHTML = '<i class="fas fa-user-check"></i> <span>Claim & Assign to Me</span>';
                     } else {
                         claimBtn.style.display = 'none';
                     }
@@ -294,12 +294,12 @@ function trackChange(field, value) {
     document.getElementById('btn-done-ticket').style.display = 'none';
 }
 
-window.claimCurrentTicket = async function() {
+window.claimCurrentTicket = async function () {
     if (!window.currentTicketId || !window.currentUser) return;
     const btn = document.getElementById('btn-claim-ticket');
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 6px;"></i> Claiming...';
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> <span>Claiming...</span>';
     }
 
     try {
@@ -321,28 +321,28 @@ window.claimCurrentTicket = async function() {
             window.showToast(d.message || 'Failed to claim ticket', 'error');
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-hand-paper" style="margin-right: 6px;"></i> Claim & Assign to Me';
+                btn.innerHTML = '<i class="fas fa-user-check"></i> <span>Claim & Assign to Me</span>';
             }
         }
     } catch (e) {
         window.showToast('Network error while claiming ticket', 'error');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-hand-paper" style="margin-right: 6px;"></i> Claim & Assign to Me';
+            btn.innerHTML = '<i class="fas fa-user-check"></i> <span>Claim & Assign to Me</span>';
         }
     }
 };
 
-window.saveTicketChanges = async function() {
+window.saveTicketChanges = async function () {
     const saveBtn = document.getElementById('btn-save-ticket');
     const doneBtn = document.getElementById('btn-done-ticket');
-    
+
     // Show loading state on Apply button
     if (saveBtn) {
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="margin-right: 8px;"></i>Saving...';
     }
-    
+
     try {
         const res = await window.apiFetch(`/tickets/${window.currentTicketId}`, {
             method: 'PUT',
@@ -375,11 +375,11 @@ window.saveTicketChanges = async function() {
     }
 };
 
-window.closeDetailModal = function() {
+window.closeDetailModal = function () {
     document.getElementById('detail-modal').style.display = 'none';
 };
 
-window.submitComment = async function(e) {
+window.submitComment = async function (e) {
     e.preventDefault();
     const content = document.getElementById('c-text').value;
     if (!content) return;
@@ -402,7 +402,7 @@ window.submitComment = async function(e) {
     }
 };
 
-window.getAiSuggestion = async function() {
+window.getAiSuggestion = async function () {
     const btn = document.querySelector('button[onclick="window.getAiSuggestion()"]');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Thinking...';
@@ -424,12 +424,12 @@ window.getAiSuggestion = async function() {
     btn.innerHTML = '<i class="fas fa-magic"></i> AI Assist';
 };
 
-window.useAiReply = function() {
+window.useAiReply = function () {
     document.getElementById('c-text').value = document.getElementById('ai-suggested-text').innerText;
     document.getElementById('ai-suggestion-box').style.display = 'none';
 };
 
-window.regenerateAiSummary = async function() {
+window.regenerateAiSummary = async function () {
     const btnText = document.getElementById('btn-ai-summary-text');
     const btnIcon = document.getElementById('btn-ai-summary-icon');
     const btnSpinner = document.getElementById('btn-ai-summary-spinner');
@@ -464,19 +464,19 @@ window.regenerateAiSummary = async function() {
 let cachedCustomersList = [];
 let isCustomCustomerMode = false;
 
-window.openCreateTicketModal = async function() {
+window.openCreateTicketModal = async function () {
     // Show modal immediately with loading skeleton
     document.getElementById('create-ticket-modal').style.display = 'flex';
-    
+
     const submitBtn = document.querySelector('#create-ticket-form button[type="submit"]');
     const customerSelect = document.getElementById('t-customer');
     const assigneeSelect = document.getElementById('t-assignee');
-    
+
     // Show loading placeholder in selects
     if (customerSelect) customerSelect.innerHTML = '<option>Loading customers...</option>';
     if (assigneeSelect) assigneeSelect.innerHTML = '<option>Loading agents...</option>';
     if (submitBtn) submitBtn.disabled = true;
-    
+
     try {
         const [custRes, agentRes] = await Promise.all([
             window.apiFetch('/users?role=USER'),
@@ -485,7 +485,7 @@ window.openCreateTicketModal = async function() {
         const custData = await custRes.json();
         const agentData = await agentRes.json();
         cachedCustomersList = (custData && custData.data) || [];
-        
+
         if (customerSelect) {
             if (cachedCustomersList.length > 0) {
                 customerSelect.innerHTML = cachedCustomersList.map(c => `<option value="${c.id}">${c.name} (${c.email})</option>`).join('');
@@ -499,7 +499,7 @@ window.openCreateTicketModal = async function() {
         }
 
         document.getElementById('create-ticket-form').reset();
-        
+
         // Reset customer mode to default dropdown
         isCustomCustomerMode = false;
         const selectMode = document.getElementById('customer-select-mode');
@@ -516,7 +516,7 @@ window.openCreateTicketModal = async function() {
     }
 };
 
-window.toggleCustomerMode = function() {
+window.toggleCustomerMode = function () {
     isCustomCustomerMode = !isCustomCustomerMode;
     const selectMode = document.getElementById('customer-select-mode');
     const customMode = document.getElementById('customer-custom-mode');
@@ -546,7 +546,7 @@ window.toggleCustomerMode = function() {
     }
 };
 
-window.handleCustomerDropdownChange = function(selectEl) {
+window.handleCustomerDropdownChange = function (selectEl) {
     if (!selectEl) return;
     const found = cachedCustomersList.find(c => c.id === selectEl.value);
     if (found) {
@@ -557,11 +557,11 @@ window.handleCustomerDropdownChange = function(selectEl) {
     }
 };
 
-window.closeCreateTicketModal = function() {
+window.closeCreateTicketModal = function () {
     document.getElementById('create-ticket-modal').style.display = 'none';
 };
 
-window.submitCreateTicket = async function(e) {
+window.submitCreateTicket = async function (e) {
     if (e) e.preventDefault();
     const subject = document.getElementById('t-subject')?.value?.trim();
     const description = document.getElementById('t-description')?.value?.trim();
@@ -676,7 +676,7 @@ function renderAttachments(attachments) {
     `).join('') || '<p>No attachments yet.</p>';
 }
 
-window.deleteUploadedAttachment = async function(attachmentId) {
+window.deleteUploadedAttachment = async function (attachmentId) {
     if (!confirm('Are you sure you want to delete this attachment?')) return;
     try {
         const res = await window.apiFetch(`/tickets/${window.currentTicketId}/attachments/${attachmentId}`, {
@@ -696,7 +696,7 @@ window.deleteUploadedAttachment = async function(attachmentId) {
     }
 };
 
-window.switchDetailTab = function(tab) {
+window.switchDetailTab = function (tab) {
     document.querySelectorAll('.detail-tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.getElementById(`tab-btn-${tab}`).classList.add('active');
@@ -715,10 +715,10 @@ async function loadTicketHistory(id) {
                 <div class="text-muted"><small>${h.oldValue || 'none'} ➔ ${h.newValue}</small></div>
             </div>
         `).join('') || '<p>No history logs.</p>';
-    } catch (e) {}
+    } catch (e) { }
 }
 
-window.deleteTicket = async function(id) {
+window.deleteTicket = async function (id) {
     if (!confirm('Delete this ticket permanently?')) return;
     try {
         await window.apiFetch(`/tickets/${id}`, { method: 'DELETE' });
@@ -732,7 +732,7 @@ window.deleteTicket = async function(id) {
     } catch (e) { window.showToast('Delete failed', 'error'); }
 };
 
-window.toggleSelectAll = function(type) {
+window.toggleSelectAll = function (type) {
     const isChecked = document.getElementById(`select-all-${type}`).checked;
     const className = type === 'tickets' ? 'ticket-checkbox' : (type === 'staff' ? 'staff-checkbox' : 'customer-checkbox');
     const checkboxes = document.querySelectorAll(`.${className}`);
@@ -745,12 +745,12 @@ window.toggleSelectAll = function(type) {
     window.updateBulkActionsVisibility(type);
 };
 
-window.updateBulkActionsVisibility = function(type) {
+window.updateBulkActionsVisibility = function (type) {
     const className = type === 'tickets' ? 'ticket-checkbox' : (type === 'staff' ? 'staff-checkbox' : 'customer-checkbox');
     const selected = document.querySelectorAll(`.${className}:checked`);
     const bulkBtn = document.getElementById(`bulk-delete-${type}`);
     const clearBtn = document.getElementById(`btn-clear-${type}`);
-    
+
     if (bulkBtn) {
         bulkBtn.style.display = selected.length > 0 ? 'inline-block' : 'none';
         bulkBtn.innerHTML = `<i class="fas fa-trash"></i> Delete Selected (${selected.length})`;
@@ -762,7 +762,7 @@ window.updateBulkActionsVisibility = function(type) {
             clearBtn.style.display = selected.length > 0 ? 'inline-block' : 'none';
         }
     }
-    
+
     const allOnPage = document.querySelectorAll(`.${className}`);
     const selectAllCheckbox = document.getElementById(`select-all-${type}`);
     if (selectAllCheckbox && allOnPage.length > 0) {
@@ -778,7 +778,7 @@ window.updateBulkActionsVisibility = function(type) {
     }
 };
 
-window.bulkDeleteTickets = async function() {
+window.bulkDeleteTickets = async function () {
     const selected = Array.from(document.querySelectorAll('.ticket-checkbox:checked')).map(cb => cb.value);
     if (selected.length === 0 || !confirm(`Delete ${selected.length} tickets permanently?`)) return;
 
@@ -802,7 +802,7 @@ window.bulkDeleteTickets = async function() {
 // ─── Call Recording to AI Ticket Handlers ──────────────────
 let selectedAudioFile = null;
 
-window.openAudioTicketModal = function() {
+window.openAudioTicketModal = function () {
     const modal = document.getElementById('audio-ticket-modal');
     if (modal) {
         modal.style.display = 'flex';
@@ -810,7 +810,7 @@ window.openAudioTicketModal = function() {
     }
 };
 
-window.closeAudioTicketModal = function() {
+window.closeAudioTicketModal = function () {
     const modal = document.getElementById('audio-ticket-modal');
     if (modal) {
         modal.style.display = 'none';
@@ -818,7 +818,7 @@ window.closeAudioTicketModal = function() {
     }
 };
 
-window.handleAudioFileSelect = function(e) {
+window.handleAudioFileSelect = function (e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
@@ -844,7 +844,7 @@ window.handleAudioFileSelect = function(e) {
     if (submitBtn) submitBtn.disabled = false;
 };
 
-window.clearAudioSelection = function() {
+window.clearAudioSelection = function () {
     selectedAudioFile = null;
     const fileInput = document.getElementById('audio-file-input');
     const card = document.getElementById('audio-file-card');
@@ -870,7 +870,7 @@ window.clearAudioSelection = function() {
     if (btnSpinner) btnSpinner.style.display = 'none';
 };
 
-window.submitAudioTicket = async function(e) {
+window.submitAudioTicket = async function (e) {
     if (e) e.preventDefault();
     if (!selectedAudioFile) {
         window.showToast('Please upload an audio recording first', 'warning');
@@ -932,9 +932,9 @@ window.submitAudioTicket = async function(e) {
             if (procHeading) procHeading.innerText = '✅ Ticket Created Successfully!';
             if (procSubtext) procSubtext.innerText = `Subject: "${data.data.subject}" — Opening ticket now...`;
             if (btnText) btnText.innerText = 'Done!';
-            
+
             await new Promise(r => setTimeout(r, 1200));
-            
+
             window.showToast('AI Ticket created successfully from recording!', 'success');
             window.closeAudioTicketModal();
             if (window.invalidateApiCache) {
